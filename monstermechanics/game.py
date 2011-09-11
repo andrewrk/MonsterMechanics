@@ -20,6 +20,8 @@ class Control:
     Rotate2 = 5
     Rotate3 = 6
     Rotate4 = 7
+    Rotate5 = 8
+    Rotate6 = 9
 
 class Game(object):
     def __init__(self, width=853, height=480, show_fps=True):
@@ -38,6 +40,8 @@ class Game(object):
             pyglet.window.key._2: Control.Rotate2,
             pyglet.window.key._3: Control.Rotate3,
             pyglet.window.key._4: Control.Rotate4,
+            pyglet.window.key._5: Control.Rotate5,
+            pyglet.window.key._6: Control.Rotate6,
         }
 
         self.control_state = [False] * (len(dir(Control)) - 2)
@@ -96,13 +100,17 @@ class Game(object):
         if self.control_state[Control.MoveDown]:
             self.monster.pos.y -= 50 * dt
         if self.control_state[Control.Rotate1]:
-            self.leg.rotation += math.pi * 1000 * dt
+            self.leg.rotation += math.pi * .5 * dt
         if self.control_state[Control.Rotate2]:
-            self.leg.rotation -= math.pi * 1000 * dt
+            self.leg.rotation -= math.pi * .5 * dt
         if self.control_state[Control.Rotate3]:
-            self.claw.rotation += math.pi * 1000 * dt
+            self.claw.rotation += math.pi * .5 * dt
         if self.control_state[Control.Rotate4]:
-            self.claw.rotation -= math.pi * 1000 * dt
+            self.claw.rotation -= math.pi * .5 * dt
+        if self.control_state[Control.Rotate5]:
+            self.monster.head.rotation += math.pi * .5 * dt
+        if self.control_state[Control.Rotate6]:
+            self.monster.head.rotation -= math.pi * .5 * dt
 
     def on_draw(self):
         self.window.clear()

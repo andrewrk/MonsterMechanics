@@ -43,9 +43,10 @@ class BodyPart(object):
             return Vec2d(0,0)
         else:
             parent_offset = self.parent_pin.parent.get_pos()
+            rot = self.parent_pin.parent.get_angle() + self.parent_pin.pin_angle
             my_offset = Vec2d(
-                self.parent_pin.pin_radius * math.cos(self.parent_pin.pin_angle),
-                self.parent_pin.pin_radius * math.sin(self.parent_pin.pin_angle))
+                self.parent_pin.pin_radius * math.cos(rot),
+                self.parent_pin.pin_radius * math.sin(rot))
             return parent_offset + my_offset
     
     def get_angle(self):
@@ -64,7 +65,7 @@ class BodyPart(object):
         self.sprite.set_position(*absolute_pos)
 
         absolute_rotation = offset_angle + self.get_angle()
-        self.sprite.rotation = math.pi / 180 * absolute_rotation
+        self.sprite.rotation = -180 / math.pi * absolute_rotation
 
         for child_pin in self.child_pins:
             child_pin.child.draw(offset_pos, offset_angle)
