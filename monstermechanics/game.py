@@ -5,6 +5,9 @@ from vec2d import Vec2d
 
 from monster import Monster, BodyPart
 
+import math
+import json
+
 name = "Monster Mechanics"
 target_fps = 60
 
@@ -13,6 +16,10 @@ class Control:
     MoveRight = 1
     MoveUp = 2
     MoveDown = 3
+    Rotate1 = 4
+    Rotate2 = 5
+    Rotate3 = 6
+    Rotate4 = 7
 
 class Game(object):
     def __init__(self, width=853, height=480, show_fps=True):
@@ -26,26 +33,53 @@ class Game(object):
             pyglet.window.key.RIGHT: Control.MoveRight,
             pyglet.window.key.UP: Control.MoveUp,
             pyglet.window.key.DOWN: Control.MoveDown,
+
+            pyglet.window.key._1: Control.Rotate1,
+            pyglet.window.key._2: Control.Rotate2,
+            pyglet.window.key._3: Control.Rotate3,
+            pyglet.window.key._4: Control.Rotate4,
         }
 
         self.control_state = [False] * (len(dir(Control)) - 2)
 
-        self.images = {}
+        self.part_definitions = {}
 
-    def getImage(self, image_name):
+    def makeBodyPart(self, name):
         try:
-            return self.images[image_name]
+            definition = self.part_definitions[name]
         except KeyError:
-            img = pyglet.resource.image(image_name)
-            self.images[image_name] = img
-            return img
+            with pyglet.resource.file('components/%s.json' % name) as f:
+                definition = json.loads(f.read())
+
+            # add image to it
+            img = pyglet.resource.image(definition['name'])
+            # <mauve> [offset is] the amount you have to translate the image
+            # <mauve> So -1 * the position of the centre in the image
+            # also we have to flip the y axis because this is pyglet
+            img.anchor_x = -definition['offset'][0]
+            img.anchor_y = img.height+definition['offset'][1]
+            definition['img'] = img
+
+            # cache it
+            self.part_definitions[name] = definition
+        
+        sprite = pyglet.sprite.Sprite(definition['img'],
+            group=self.group_main, batch=self.batch_main)
+        return BodyPart(sprite)
 
     def buildMonster(self):
-        head_sprite = pyglet.sprite.Sprite(self.getImage('sprites/head-level1.png'),
-            group=self.group_main, batch=self.batch_main)
-        head = BodyPart(head_sprite)
+        head = self.makeBodyPart('head-level1')
+        leg = self.makeBodyPart('leg-level1')
+        claw = self.makeBodyPart('claws-level1')
+
+        head.attach_part(leg, 50, math.pi * 3 / 2)
+        leg.attach_part(claw, 120, math.pi * 3 / 2)
+
         self.monster = Monster(head)
-        self.monster.pos = Vec2d(100, 100)
+        self.monster.pos = Vec2d(200, 300)
+
+        self.leg = leg
+        self.claw = claw
 
     def getNextGroupNum(self):
         val = self.next_group_num
@@ -61,6 +95,14 @@ class Game(object):
             self.monster.pos.y += 50 * dt
         if self.control_state[Control.MoveDown]:
             self.monster.pos.y -= 50 * dt
+        if self.control_state[Control.Rotate1]:
+            self.leg.rotation += math.pi * 1000 * dt
+        if self.control_state[Control.Rotate2]:
+            self.leg.rotation -= math.pi * 1000 * dt
+        if self.control_state[Control.Rotate3]:
+            self.claw.rotation += math.pi * 1000 * dt
+        if self.control_state[Control.Rotate4]:
+            self.claw.rotation -= math.pi * 1000 * dt
 
     def on_draw(self):
         self.window.clear()

@@ -26,6 +26,8 @@ class BodyPart(object):
         sprite - a pyglet sprite
         """
         self.sprite = sprite
+        # radians
+        self.rotation = 0
         # see Pin class
         self.parent_pin = None
         self.child_pins = []
@@ -40,7 +42,7 @@ class BodyPart(object):
         if self.parent_pin is None:
             return Vec2d(0,0)
         else:
-            parent_offset = self.parent_pin.get_pos()
+            parent_offset = self.parent_pin.parent.get_pos()
             my_offset = Vec2d(
                 self.parent_pin.pin_radius * math.cos(self.parent_pin.pin_angle),
                 self.parent_pin.pin_radius * math.sin(self.parent_pin.pin_angle))
@@ -49,22 +51,23 @@ class BodyPart(object):
     def get_angle(self):
         "returns the angle of this part in radians relative to the base part"
         if self.parent_pin is None:
-            return 0
+            return self.rotation
         else:
-            parent_angle = self.parent_pin.get_angle()
-            my_angle = self.parent_pin.pin_angle
+            parent_angle = self.parent_pin.parent.get_angle()
+            my_angle = self.parent_pin.pin_angle + self.rotation
             return parent_angle + my_angle
 
     def draw(self, offset_pos=Vec2d(0,0), offset_angle=0):
         "update self and children's sprites to correct angle and position"
         absolute_pos = offset_pos + self.get_pos()
+        absolute_pos.do(int)
         self.sprite.set_position(*absolute_pos)
 
-        absolute_rotation = offset_angle + math.pi / 180 * self.get_angle()
-        self.sprite.rotation = absolute_rotation
+        absolute_rotation = offset_angle + self.get_angle()
+        self.sprite.rotation = math.pi / 180 * absolute_rotation
 
         for child_pin in self.child_pins:
-            child_pin.child.draw()
+            child_pin.child.draw(offset_pos, offset_angle)
 
 class Monster(object):
     def __init__(self, head):
