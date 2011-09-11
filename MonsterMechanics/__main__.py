@@ -3,6 +3,7 @@ from __future__ import division, print_function, unicode_literals; range = xrang
 import pyglet
 
 import os
+from game import Game
 
 def setUpResources():
     # add data folder to pyglet resource path
@@ -20,4 +21,5 @@ setUpResources()
 
 
 def main():
-    print("go")
+    game = Game()
+    game.start()
