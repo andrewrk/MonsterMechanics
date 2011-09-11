@@ -3,6 +3,8 @@ from __future__ import division, print_function, unicode_literals; range = xrang
 import pyglet
 from vec2d import Vec2d
 
+from monster import Monster, BodyPart
+
 name = "Monster Mechanics"
 target_fps = 60
 
@@ -28,6 +30,23 @@ class Game(object):
 
         self.control_state = [False] * (len(dir(Control)) - 2)
 
+        self.images = {}
+
+    def getImage(self, image_name):
+        try:
+            return self.images[image_name]
+        except KeyError:
+            img = pyglet.resource.image(image_name)
+            self.images[image_name] = img
+            return img
+
+    def buildMonster(self):
+        head_sprite = pyglet.sprite.Sprite(self.getImage('sprites/head-level1.png'),
+            group=self.group_main, batch=self.batch_main)
+        head = BodyPart(head_sprite)
+        self.monster = Monster(head)
+        self.monster.pos = Vec2d(100, 100)
+
     def getNextGroupNum(self):
         val = self.next_group_num
         self.next_group_num += 1
@@ -35,19 +54,18 @@ class Game(object):
 
     def update(self, dt):
         if self.control_state[Control.MoveLeft]:
-            self.circle_pos.x -= 50 * dt
+            self.monster.pos.x -= 50 * dt
         if self.control_state[Control.MoveRight]:
-            self.circle_pos.x += 50 * dt
+            self.monster.pos.x += 50 * dt
         if self.control_state[Control.MoveUp]:
-            self.circle_pos.y += 50 * dt
+            self.monster.pos.y += 50 * dt
         if self.control_state[Control.MoveDown]:
-            self.circle_pos.y -= 50 * dt
-
-        self.circle_sprite.set_position(*self.circle_pos)
+            self.monster.pos.y -= 50 * dt
 
     def on_draw(self):
         self.window.clear()
 
+        self.monster.draw()
         self.batch_main.draw()
 
         if self.show_fps:
@@ -56,13 +74,10 @@ class Game(object):
     def start(self):
         self.window = pyglet.window.Window(width=self.size.x, height=self.size.y, caption=name)
 
-        self.img_circle = pyglet.resource.image('monster.png')
-
         self.batch_main = pyglet.graphics.Batch()
         self.group_main = pyglet.graphics.OrderedGroup(self.getNextGroupNum())
 
-        self.circle_pos = Vec2d(100, 100)
-        self.circle_sprite = pyglet.sprite.Sprite(self.img_circle, group=self.group_main, batch=self.batch_main, x=self.circle_pos.x, y=self.circle_pos.y)
+        self.buildMonster()
 
         self.fps_display = pyglet.clock.ClockDisplay()
 
