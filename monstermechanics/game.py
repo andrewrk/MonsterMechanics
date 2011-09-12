@@ -111,9 +111,14 @@ class Game(object):
         self.fps_display = pyglet.clock.ClockDisplay()
 
         pyglet.clock.schedule_interval(self.update, 1/target_fps)
-        self.window.set_handler('on_draw', self.on_draw)
-        self.window.set_handler('on_key_press', self.on_key_press)
-        self.window.set_handler('on_key_release', self.on_key_release)
+        self.window.set_handlers(
+            on_draw=self.on_draw,
+            on_key_press=self.on_key_press,
+            on_key_release=self.on_key_release,
+            on_mouse_press=self.hud.on_mouse_press,
+            on_mouse_release=self.hud.on_mouse_release,
+            on_mouse_drag=self.hud.on_mouse_drag,
+        )
 
         pyglet.app.run()
 

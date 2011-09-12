@@ -1,12 +1,15 @@
 import pyglet
 from pyglet import gl
 
+from vector import v
+
 
 ICON_HEIGHT = 64
 ICON_SEP = 5
 
 class PartIcon(object):
-    def __init__(self, sprite):
+    def __init__(self, name, sprite):
+        self.name = name
         self.sprite = sprite
         self.disabled = False
 
@@ -16,6 +19,16 @@ class PartIcon(object):
             self.sprite.opacity = 128
         else:
             self.sprite.opacity = 255
+
+    def contains(self, point):
+        x, y = self.sprite.position
+        HALF = ICON_HEIGHT / 2.0
+        l = x - HALF
+        r = x + HALF
+        b = y - HALF
+        t = y + HALF
+
+        return l <= point.x < r and b <= point.y < t
 
 
 class PartsHud(object):
@@ -42,25 +55,42 @@ class PartsHud(object):
         imgs = {}
         for name, path in cls.IMAGES:
             img = pyglet.resource.image(path)
+            img.anchor_x = 90 - 32
+            img.anchor_y = 32
             imgs[name] = img
         cls.images = imgs
 
     def __init__(self):
         self.icons = {}
         self.batch = pyglet.graphics.Batch()
-        y = 0
+        x = 853 - 42
+        y = 400 + 42
         for name, path in self.IMAGES:
             s = pyglet.sprite.Sprite(self.images[name], batch=self.batch)
-            s.set_position(0, y)
-            self.icons[name] = PartIcon(s)
+            s.set_position(x, y)
+            self.icons[name] = PartIcon(name, s)
             y -= ICON_HEIGHT + ICON_SEP
+
+        # Mouse handling
+        self.mousedownpos = None
+        self.dragging = False
 
     def get_icon(self, name):
         return self.icons[name]
 
     def draw(self):
-        gl.glPushMatrix(gl.GL_MODELVIEW)
         gl.glLoadIdentity()
-        gl.glTranslatef(750, 400, 0.0)
         self.batch.draw()
-        gl.glPopMatrix(gl.GL_MODELVIEW)
+
+    def on_mouse_press(self, x, y, button, modifiers):
+        pass
+
+    def on_mouse_drag(self, x, y, dx, dy, button, modifiers):
+        pass
+
+    def on_mouse_release(self, x, y, button, modifiers):
+        point = v(x, y)
+        for i in self.icons.values():
+            if i.contains(point):
+                print i.name 
+                break
