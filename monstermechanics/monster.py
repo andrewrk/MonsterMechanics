@@ -3,6 +3,7 @@ from __future__ import division, print_function, unicode_literals; range = xrang
 from .components import *
 from vec2d import Vec2d
 import math
+import pyglet
 
 class Pin(object):
     "The connection between pinned body parts"
@@ -58,17 +59,16 @@ class BodyPart(object):
             my_angle = self.parent_pin.pin_angle + self.rotation
             return parent_angle + my_angle
 
-    def draw(self, offset_pos=Vec2d(0,0), offset_angle=0):
+    def draw(self):
         "update self and children's sprites to correct angle and position"
-        absolute_pos = offset_pos + self.get_pos()
-        absolute_pos.do(int)
-        self.sprite.set_position(*absolute_pos)
+        self.sprite.set_position(*self.get_pos().done(int))
 
-        absolute_rotation = offset_angle + self.get_angle()
+        absolute_rotation = self.get_angle()
         self.sprite.rotation = -180 / math.pi * absolute_rotation
 
+        self.sprite.draw()
         for child_pin in self.child_pins:
-            child_pin.child.draw(offset_pos, offset_angle)
+            child_pin.child.draw()
 
 class Monster(object):
     def __init__(self, head):
@@ -77,4 +77,7 @@ class Monster(object):
         self.head = head
 
     def draw(self):
-        self.head.draw(self.pos)
+        pyglet.gl.glPushMatrix()
+        pyglet.gl.glTranslatef(self.pos.x, self.pos.y, 0.0)
+        self.head.draw()
+        pyglet.gl.glPopMatrix()
