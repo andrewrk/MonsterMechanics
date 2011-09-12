@@ -41,6 +41,10 @@ class AbstractBody(object):
     def set_position(self, pos):
         raise NotImplementedError("AbstractPhysics.set_position()")
 
+    def attach(self, other, anchor_point):
+        """Attach this body to another body using a pin joint at anchor_point""" 
+        raise NotImplementedError("AbstractPhyscs.attach()")
+
 
 class AbstractPhysics(object):
     def create_world(self, gravity):

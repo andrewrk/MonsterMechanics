@@ -91,11 +91,19 @@ class Head(BodyPart):
     RESOURCE_NAME = 'head-level1'
 
 
+class Lung(BodyPart):
+    """Lungs that supply energy to connected parts"""
+
+
 class Monster(object):
     @classmethod
     def create_initial(cls, world, pos):
         Head.load() 
-        return cls(world, [Head(world, pos)])
+        Lung.load() 
+        head = Head(world, pos)
+        lung = Lung(world, pos + v(80, 60)) 
+        head.body.attach(lung.body, pos + v(50, 30))
+        return cls(world, [head, lung])
 
     def __init__(self, world, parts):
         self.world = world

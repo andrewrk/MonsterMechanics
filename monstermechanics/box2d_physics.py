@@ -21,8 +21,14 @@ class Box2DPhysics(AbstractPhysics):
 class Box2DWorld(AbstractWorld):
     def __init__(self, world):
         self.world = world
+        self.update_callbacks = []
 
+    def add_update_callback(self, c):
+        self.update_callbacks.append(c)
+    
     def update(self, dt):
+        for c in self.update_callbacks:
+            c(dt)
         self.world.Step(dt, 20, 16)
 
     def create_ground(self, y):
@@ -34,7 +40,7 @@ class Box2DWorld(AbstractWorld):
         self.ground = Box2DBody(self, ground)
         return self.ground
 
-    def create_body(self, circles, density=1, restitution=0.1, friction=0.5):
+    def create_body(self, circles, density=0.00001, restitution=0.1, friction=0.5):
         bodydef = b2BodyDef()
         body = self.world.CreateBody(bodydef)
 
@@ -55,6 +61,7 @@ class Box2DBody(AbstractBody):
     def __init__(self, world, body):
         self.world = world
         self.body = body
+        self.joints = []
 
     def remove(self):
         self.world.world.DestroyBody(self.body)
@@ -70,3 +77,25 @@ class Box2DBody(AbstractBody):
 
     def local_to_world(self, point):
         return self.body.LocalToWorld(point)
+
+    def attach(self, another, anchor_point):
+        joint = b2RevoluteJointDef()
+        joint.maxMotorTorque = 800.0
+        joint.motorSpeed = 0
+        joint.enableMotor = True
+        joint.Initialize(self.body, another.body, anchor_point)
+        j = StiffJoint(self.world.world.CreateJoint(joint).getAsType())
+        self.joints.append(j)
+        self.world.add_update_callback(j.update)
+
+
+class StiffJoint(object):
+    """Control for the motor of a revolution joint"""
+    def __init__(self, joint):
+        self.joint = joint
+
+    def update(self, dt):
+        angleError = self.joint.GetJointAngle()
+        gain = 0.15
+        self.joint.SetMotorSpeed(-gain * angleError)
+
