@@ -1,75 +1,65 @@
 from __future__ import division, print_function, unicode_literals; range = xrange
 
-from .components import *
-from vec2d import Vec2d
 import math
 import pyglet
+import json
 
-def trig(angle):
-    return Vec2d(math.cos(angle), math.sin(angle))
+from vector import v
 
-class Pin(object):
-    "The connection between pinned body parts"
-    def __init__(self, child, parent, pin_radius, pin_angle):
-        """
-        child - body part to pin to parent
-        parent - body part to pin child to
-        pin_radius - distance between child's anchor point and parent's
-                     anchor point
-        pin_angle - relative angle which points from parent's anchor point
-                    to child's anchor point
-        """
-        self.child = child
-        self.parent = parent
-        self.pin_radius = pin_radius
-        self.pin_angle = pin_angle
 
 class BodyPart(object):
-    def __init__(self, sprite):
-        """
-        sprite - a pyglet sprite
-        """
-        self.sprite = sprite
-        # radians
-        self.rotation = 0
-        # see Pin class
-        self.parent_pin = None
-        self.child_pins = []
+    """Base class of all body parts."""
+
+    part_definitions = {}
+
+    @classmethod
+    def load(cls):
+        try:
+            name = cls.RESOURCE_NAME
+        except AttributeError:
+            name = cls.__name__.lower()
+
+        try:
+            definition = BodyPart.part_definitions[name]
+        except KeyError:
+            with pyglet.resource.file('components/%s.json' % name) as f:
+                definition = json.loads(f.read())
+
+            # add image to it
+            img = pyglet.resource.image(definition['name'])
+            # <mauve> [offset is] the amount you have to translate the image
+            # <mauve> So -1 * the position of the centre in the image
+            # also we have to flip the y axis because this is pyglet
+            img.anchor_x = -definition['offset'][0]
+            img.anchor_y = img.height+definition['offset'][1]
+            definition['img'] = img
+
+            # cache it
+            BodyPart.part_definitions[name] = definition
+        
+        cls._img = definition['img']
+        cls._shapes = [(v(0, 0), definition['radius'])]
+
+    def __init__(self, world, pos):
+        self.sprite = pyglet.sprite.Sprite(self._img)
+        self.create_body(world)
+        self.body.set_position(pos)
+
+    def create_body(self, world):
+        self.body = world.create_body(self._shapes)
 
     def attach_part(self, part, pin_radius, pin_angle):
         pin = Pin(part, self, pin_radius, pin_angle)
         part.parent_pin = pin
         self.child_pins.append(pin)
 
-    def get_pos(self):
-        "returns a vec2d of the position of this part relative to the base part"
-        if self.parent_pin is None:
-            return Vec2d(0,0)
-        else:
-            parent_offset = self.parent_pin.parent.get_pos()
-            rot = self.parent_pin.parent.get_angle() + self.parent_pin.pin_angle
-            my_offset = self.parent_pin.pin_radius * trig(rot)
-            return parent_offset + my_offset
-    
-    def get_angle(self):
-        "returns the angle of this part in radians relative to the base part"
-        if self.parent_pin is None:
-            return self.rotation
-        else:
-            parent_angle = self.parent_pin.parent.get_angle()
-            my_angle = self.parent_pin.pin_angle + self.rotation
-            return parent_angle + my_angle
-
     def draw(self):
         "update self and children's sprites to correct angle and position"
-        self.sprite.set_position(*self.get_pos().done(int))
-
-        absolute_rotation = self.get_angle()
-        self.sprite.rotation = -180 / math.pi * absolute_rotation
-
+        self.sprite.set_position(*self.body.get_position())
+        self.sprite.rotation = -180 / math.pi * self.body.get_rotation()
         self.sprite.draw()
-        for child_pin in self.child_pins:
-            child_pin.child.draw()
+        #for child_pin in self.child_pins:
+        #    child_pin.child.draw()
 
     def get_bounding_box(self):
         sw, ne = self._get_bounding_box()
@@ -91,24 +81,29 @@ class BodyPart(object):
         p3 = cx2 * rot_trig + cy  * rot_trig2
         p4 = cy *  rot_trig + cx  * rot_trig2
         return (
-            Vec2d(min(p1.x, p2.x, p3.x, p4.x), min(p1.y, p2.y, p3.y, p4.y)),
-            Vec2d(max(p1.x, p2.x, p3.x, p4.x), max(p1.y, p2.y, p3.y, p4.y)),
+            v(min(p1.x, p2.x, p3.x, p4.x), min(p1.y, p2.y, p3.y, p4.y)),
+            v(max(p1.x, p2.x, p3.x, p4.x), max(p1.y, p2.y, p3.y, p4.y)),
         )
 
+
+class Head(BodyPart):
+    """The head of the monster"""
+    RESOURCE_NAME = 'head-level1'
+
+
 class Monster(object):
-    def __init__(self, head):
-        "head - the BodyPart that represents the head of the monster"
-        self.pos = Vec2d(0, 0)
-        self.head = head
-        # offset from self.pos to edges, computed when you call cacheBoundingBox
-        self.sw_edge = Vec2d(0, 0)
-        self.ne_edge = Vec2d(0, 0)
+    @classmethod
+    def create_initial(cls, world, pos):
+        Head.load() 
+        return cls(world, [Head(world, pos)])
+
+    def __init__(self, world, parts):
+        self.world = world
+        self.parts = parts
 
     def draw(self):
-        pyglet.gl.glPushMatrix()
-        pyglet.gl.glTranslatef(self.pos.x, self.pos.y, 0.0)
-        self.head.draw()
-        pyglet.gl.glPopMatrix()
+        for p in self.parts:
+            p.draw()
 
     def cacheBoundingBox(self):
         "compute the bounding box and save it for future reference"
