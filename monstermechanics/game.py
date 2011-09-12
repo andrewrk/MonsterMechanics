@@ -84,6 +84,10 @@ class Game(object):
         self.monster = Monster(head)
         self.monster.pos = Vec2d(200, 300)
 
+        self.monster.cacheBoundingBox()
+        img = pyglet.resource.image('debugbox.png')
+        self.test = [pyglet.sprite.Sprite(img, batch=self.batch_level) for x in range(4)]
+
         self.leg = leg
         self.claw = claw
 
@@ -113,6 +117,14 @@ class Game(object):
             self.scroll.x += 100 * dt
         if self.control_state[Control.Rotate6]:
             self.scroll.x -= 100 * dt
+
+        self.monster.cacheBoundingBox()
+        pos = self.monster.pos + self.monster.sw_edge
+        size = self.monster.ne_edge - self.monster.sw_edge
+        self.test[0].set_position(pos.x, pos.y)
+        self.test[1].set_position(pos.x+size.x, pos.y)
+        self.test[2].set_position(pos.x+size.x, pos.y+size.y)
+        self.test[3].set_position(pos.x, pos.y+size.y)
 
     def on_draw(self):
         self.window.clear()
