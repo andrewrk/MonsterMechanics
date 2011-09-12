@@ -24,9 +24,17 @@ class PartsHud(object):
     """
 
     IMAGES = [
-        ('wing', 'sprites/icon-wing.png'),
+        ('armclaw', 'sprites/icon-armclaw.png'),
+        ('leg', 'sprites/icon-leg.png'),
         ('scales', 'sprites/icon-scales.png'),
+        ('spikes', 'sprites/icon-spikes.png'),
+        ('heart', 'sprites/icon-heart.png'),
+        ('lung', 'sprites/icon-lung.png'),
+        ('wing', 'sprites/icon-wing.png'),
+        ('eyeball', 'sprites/icon-eyeball.png'),
         ('thistlegun', 'sprites/icon-thistlegun.png'),
+        ('mutagenbladder', 'sprites/icon-mutagenbladder.png'),
+        ('eggsack', 'sprites/icon-eggsack.png'),
     ]
     
     @classmethod
