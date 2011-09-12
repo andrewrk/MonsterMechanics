@@ -5,7 +5,7 @@ from pyglet import gl
 from vector import v
 from .physics import get_physics
 
-from .hud import PartsHud
+from .hud import Shelf
 from .monster import Monster
 from .background import Background
 
@@ -98,15 +98,14 @@ class Game(object):
         Background.load()
         self.background = Background(self.window)
 
-        PartsHud.load()
-        self.hud = PartsHud()
-        self.hud.get_icon('wing').set_disabled(True)
-
         #self.buildMonster()
         physics = get_physics()
         self.world = physics.create_world(gravity=v(0, -500))
         self.world.create_ground(30)
         self.monster = Monster.create_initial(self.world, v(50, 200))
+
+        Shelf.load()
+        self.hud = Shelf(self.world)
 
         self.fps_display = pyglet.clock.ClockDisplay()
 

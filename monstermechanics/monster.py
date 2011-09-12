@@ -6,9 +6,23 @@ import json
 
 from vector import v
 
+STYLE_NORMAL = 0
+STYLE_VALID = 1
+STYLE_INVALID = 2
+
 
 class BodyPart(object):
-    """Base class of all body parts."""
+    """Base class of all body parts.
+    
+    Parts support tangible physics, but are created in a ghost mode that shows
+    where they would be inserted if the player releases the mouse. There is also
+    the ability to display the part with a visual effect to indicate whether it
+    can be created in its current position.
+    
+    To create a physics controller for the BodyPart (ie. make it non-virtual),
+    use .create_body().
+
+    """
 
     part_definitions = {}
 
@@ -40,13 +54,33 @@ class BodyPart(object):
         cls._img = definition['img']
         cls._shapes = [(v(0, 0), definition['radius'])]
 
-    def __init__(self, world, pos):
+    def __init__(self, pos):
         self.sprite = pyglet.sprite.Sprite(self._img)
-        self.create_body(world)
-        self.body.set_position(pos)
+        self.body = None
+        self.set_position(pos)
+
+    def set_style(self, style):
+        """Set a display style for the part.
+        """ 
+        if style == STYLE_VALID:
+            self.sprite.color = (0, 160, 0)
+            self.sprite.opacity = 160
+        elif style == STYLE_INVALID:
+            self.sprite.color = (200, 0, 0)
+            self.sprite.opacity = 160
+        else:
+            self.sprite.color = (255, 255, 255)
+            self.sprite.opacity = 255
+    
+    def set_position(self, pos):
+        if self.body:
+            self.body.set_position(pos)
+        else:
+            self.sprite.position = pos
 
     def create_body(self, world):
         self.body = world.create_body(self._shapes)
+        self.body.set_position(v(*self.sprite.position))
 
     def attach_part(self, part, pin_radius, pin_angle):
         pin = Pin(part, self, pin_radius, pin_angle)
@@ -55,8 +89,9 @@ class BodyPart(object):
 
     def draw(self):
         "update self and children's sprites to correct angle and position"
-        self.sprite.set_position(*self.body.get_position())
-        self.sprite.rotation = -180 / math.pi * self.body.get_rotation()
+        if self.body:
+            self.sprite.set_position(*self.body.get_position())
+            self.sprite.rotation = -180 / math.pi * self.body.get_rotation()
         self.sprite.draw()
         #for child_pin in self.child_pins:
         #    child_pin.child.draw()
@@ -100,8 +135,10 @@ class Monster(object):
     def create_initial(cls, world, pos):
         Head.load() 
         Lung.load() 
-        head = Head(world, pos)
-        lung = Lung(world, pos + v(80, 60)) 
+        head = Head(pos)
+        head.create_body(world)
+        lung = Lung(pos + v(80, 60)) 
+        lung.create_body(world)
         head.body.attach(lung.body, pos + v(50, 30))
         return cls(world, [head, lung])
 
