@@ -78,14 +78,15 @@ class BodyPart(object):
         else:
             self.sprite.position = pos
 
+    def get_position(self):
+        if self.body:
+            return self.body.get_position()
+        else:
+            return v(*self.sprite.position)
+
     def create_body(self, world):
         self.body = world.create_body(self._shapes)
         self.body.set_position(v(*self.sprite.position))
-
-    def attach_part(self, part, pin_radius, pin_angle):
-        pin = Pin(part, self, pin_radius, pin_angle)
-        part.parent_pin = pin
-        self.child_pins.append(pin)
 
     def draw(self):
         "update self and children's sprites to correct angle and position"
@@ -149,6 +150,45 @@ class Monster(object):
     def draw(self):
         for p in self.parts:
             p.draw()
+
+    def attachment_point(self, part):
+        """Find an attachment point for part to any of the parts in this monster.
+        
+        Returns None if no suitable attachment point exists.
+
+        """
+        partpos = part.get_position()
+        baseshape = part._shapes[0]
+        partpos += baseshape[0]
+        partradius = baseshape[1]
+        for p in self.parts:
+            ppos = p.get_position()
+            for centre, radius in p._shapes:
+                c = centre + ppos
+                vec = (partpos - c)
+                if vec.length2 < (radius + partradius) * (radius + partradius):
+                    return p, c + vec.scaled_to(radius + partradius), c + vec.scaled_to(radius)
+
+    def can_attach(self, part):
+       return self.attachment_point(part) is not None 
+
+    def attach(self, part):
+        attachment = self.attachment_point(part)
+        if attachment is None:
+            raise ValueError("Cannot attach part to this monster.")
+
+        destpart, partpos, jointpos = attachment
+        part.set_position(partpos)
+        part.create_body(self.world)
+        part.set_style(STYLE_NORMAL)
+        self.parts.append(part)
+        destpart.body.attach(part.body, jointpos)
+
+    def attach_part(self, part, relative_vector):
+        pin = Pin(part, self, pin_radius, pin_angle)
+        part.parent_pin = pin
+        self.child_pins.append(pin)
+        
 
     def cacheBoundingBox(self):
         "compute the bounding box and save it for future reference"

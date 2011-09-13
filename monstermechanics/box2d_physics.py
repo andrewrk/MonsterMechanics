@@ -80,7 +80,7 @@ class Box2DBody(AbstractBody):
 
     def attach(self, another, anchor_point):
         joint = b2RevoluteJointDef()
-        joint.maxMotorTorque = 800.0
+        joint.maxMotorTorque = 10000.0
         joint.motorSpeed = 0
         joint.enableMotor = True
         joint.Initialize(self.body, another.body, anchor_point)

@@ -105,7 +105,7 @@ class Game(object):
         self.monster = Monster.create_initial(self.world, v(50, 200))
 
         Shelf.load()
-        self.hud = Shelf(self.world)
+        self.hud = Shelf(self.world, self.monster)
 
         self.fps_display = pyglet.clock.ClockDisplay()
 

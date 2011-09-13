@@ -3,7 +3,7 @@ from pyglet import gl
 
 from vector import v
 
-from .monster import Head, Lung, STYLE_INVALID
+from .monster import Head, Lung, STYLE_INVALID, STYLE_VALID
 
 
 ICON_HEIGHT = 64
@@ -37,6 +37,7 @@ class PartIcon(object):
 
 class VirtualPart(object):
     pass
+
 
 class Shelf(object):
     """A heads-up display that displays icons for the various parts
@@ -72,8 +73,9 @@ class Shelf(object):
             imgs[name] = img
         cls.images = imgs
 
-    def __init__(self, world):
+    def __init__(self, world, monster):
         self.world = world
+        self.monster = monster
         self.icons = {}
         self.init_icons()
 
@@ -129,10 +131,19 @@ class Shelf(object):
 
         if self.draggedpart:
             self.draggedpart.set_position(v(x, y))
+            attachment = self.monster.attachment_point(self.draggedpart)
+            if self.monster.can_attach(self.draggedpart):
+                self.draggedpart.set_position(attachment[1])
+                self.draggedpart.set_style(STYLE_VALID)
+            else:
+                self.draggedpart.set_style(STYLE_INVALID)
 
     def on_mouse_release(self, x, y, button, modifiers):
         if self.draggedpart:
-            #TODO: attach it to the monster
-            print "TODO: Spawn", self.draggedpart.__class__.__name__
+            self.draggedpart.set_position(v(x, y))
+            try:
+                self.monster.attach(self.draggedpart)
+            except ValueError:
+                pass
         self.draggedpart = None
         self.draggedicon = None
