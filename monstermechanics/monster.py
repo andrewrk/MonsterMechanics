@@ -213,10 +213,24 @@ class EggSack(BodyPart):
 class Leg(BodyPart):
     RESOURCE_NAME = 'leg-level1'
 
+    last_rot = 0
+    torque = 0
+
     def update(self, dt):
         super(Leg, self).update(dt)
         #FIXME: only apply torque if the leg is touching the ground
-        self.body.apply_torque(-10000 * self.body.get_rotation())
+        rot = self.body.get_rotation()
+        drot = (self.last_rot - rot) / dt
+        self.last_rot = rot
+
+        #FIXME: apply a bit more intelligence here
+        target_drot = -rot
+        
+        if abs(drot) < abs(target_drot):
+            self.torque += 10000 * (target_drot - drot) * dt
+        else:
+            self.torque *= 0.1 ** dt
+        self.body.apply_torque(self.torque)
 
 
 PART_CLASSES = {

@@ -83,8 +83,6 @@ class Box2DBody(AbstractBody):
 
     def create_shapes(self):
         self.shapes = []
-        if len(self.circles) > 1:
-            print self.circles
         for centre, radius in self.circles:
             circledef = b2CircleDef()
             circledef.localPosition = centre * self.scale
