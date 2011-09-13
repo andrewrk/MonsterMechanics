@@ -1,6 +1,7 @@
 from __future__ import division, print_function, unicode_literals; range = xrange
 
 import pyglet
+from pyglet.window import key
 from pyglet import gl
 from vector import v
 from .physics import get_physics
@@ -37,17 +38,17 @@ class Game(object):
         self.next_group_num = 0
 
         self.controls = {
-            pyglet.window.key.LEFT: Control.MoveLeft,
-            pyglet.window.key.RIGHT: Control.MoveRight,
-            pyglet.window.key.UP: Control.MoveUp,
-            pyglet.window.key.DOWN: Control.MoveDown,
+            key.LEFT: Control.MoveLeft,
+            key.RIGHT: Control.MoveRight,
+            key.UP: Control.MoveUp,
+            key.DOWN: Control.MoveDown,
 
-            pyglet.window.key._1: Control.Rotate1,
-            pyglet.window.key._2: Control.Rotate2,
-            pyglet.window.key._3: Control.Rotate3,
-            pyglet.window.key._4: Control.Rotate4,
-            pyglet.window.key._5: Control.Rotate5,
-            pyglet.window.key._6: Control.Rotate6,
+            key._1: Control.Rotate1,
+            key._2: Control.Rotate2,
+            key._3: Control.Rotate3,
+            key._4: Control.Rotate4,
+            key._5: Control.Rotate5,
+            key._6: Control.Rotate6,
         }
 
         self.control_state = [False] * (len(dir(Control)) - 2)
@@ -122,6 +123,10 @@ class Game(object):
         pyglet.app.run()
 
     def on_key_press(self, symbol, modifiers):
+        if symbol == key.F12: 
+            from .screenshot import take_screenshot
+            take_screenshot(self.window)
+            return
         try:
             control = self.controls[symbol]
             self.control_state[control] = True

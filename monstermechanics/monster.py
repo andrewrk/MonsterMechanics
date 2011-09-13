@@ -64,10 +64,10 @@ class BodyPart(object):
         """ 
         if style == STYLE_VALID:
             self.sprite.color = (0, 160, 0)
-            self.sprite.opacity = 160
+            self.sprite.opacity = 80
         elif style == STYLE_INVALID:
             self.sprite.color = (200, 0, 0)
-            self.sprite.opacity = 160
+            self.sprite.opacity = 80
         else:
             self.sprite.color = (255, 255, 255)
             self.sprite.opacity = 255
