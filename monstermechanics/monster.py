@@ -169,9 +169,7 @@ class Scales(OutFacingPart):
     RESOURCE_NAME = 'scales-level1'
 
 
-class Lung(BodyPart):
-    """Lungs that supply energy to connected parts"""
-
+class PulsingBodyPart(BodyPart):
     phase = 0
     pulse_rate = 1
     pulse_amount = 0.1
@@ -181,11 +179,30 @@ class Lung(BodyPart):
         s = self.pulse_amount * math.cos(self.phase) + 1 - self.pulse_amount
         self.set_scale(self.scale * 0.97 + s * 0.03)
 
+class Lung(PulsingBodyPart):
+    """Lungs that supply energy to connected parts"""
 
-class Heart(Lung):
+class Heart(PulsingBodyPart):
+    """Hearts heal nearby tissue"""
     RESOURCE_NAME = 'heart-level1'
     pulse_rate = 3
     pulse_amount = 0.3
+
+
+class MutagenBladder(PulsingBodyPart):
+    """Mutagen bladders add to the monster's mutagen storage capacity."""
+    RESOURCE_NAME = 'mutagenbladder-level1'
+    pulse_rate = 0.01
+    pulse_amount = 0.05
+
+
+class ThistleGun(BodyPart):
+    RESOURCE_NAME = 'thistlegun-level1'
+
+
+class EggSack(BodyPart):
+    RESOURCE_NAME = 'egg-sack'
+
 
 
 PART_CLASSES = {
@@ -196,6 +213,9 @@ PART_CLASSES = {
     'spikes': Spikes,
     'scales': Scales,
     'wing': Wing,
+    'mutagenbladder': MutagenBladder,
+    'thistlegun': ThistleGun,
+    'eggsack': EggSack,
 }
 
 class Monster(object):
