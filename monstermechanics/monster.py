@@ -57,6 +57,7 @@ class BodyPart(object):
     def __init__(self, pos):
         self.sprite = pyglet.sprite.Sprite(self._img)
         self.body = None
+        self.scale = 1.0
         self.set_position(pos)
 
     def set_style(self, style):
@@ -87,6 +88,16 @@ class BodyPart(object):
     def create_body(self, world):
         self.body = world.create_body(self._shapes)
         self.body.set_position(v(*self.sprite.position))
+
+    def set_scale(self, scale):
+        self.scale = scale
+        self.sprite.scale = self.scale
+        self.body.set_scale(self.scale)
+
+    def update(self, dt):
+        if self.scale < 1.0:
+            newscale = min(1.0, self.scale + dt / 3.0)
+            self.set_scale(newscale)
 
     def draw(self):
         "update self and children's sprites to correct angle and position"
@@ -172,6 +183,10 @@ class Monster(object):
     def can_attach(self, part):
        return self.attachment_point(part) is not None 
 
+    def update(self, dt):
+        for p in self.parts:
+            p.update(dt)
+
     def attach(self, part):
         attachment = self.attachment_point(part)
         if attachment is None:
@@ -184,12 +199,21 @@ class Monster(object):
         self.parts.append(part)
         destpart.body.attach(part.body, jointpos)
 
-    def attach_part(self, part, relative_vector):
-        pin = Pin(part, self, pin_radius, pin_angle)
-        part.parent_pin = pin
-        self.child_pins.append(pin)
-        
+    def attach_and_grow(self, part, initial_scale=0.1):
+        attachment = self.attachment_point(part)
+        if attachment is None:
+            raise ValueError("Cannot attach part to this monster.")
 
-    def cacheBoundingBox(self):
-        "compute the bounding box and save it for future reference"
-        self.sw_edge, self.ne_edge = self.head.get_bounding_box()
+        destpart, partpos, jointpos = attachment
+        part.create_body(self.world)
+
+        baseshape = part._shapes[0]
+        partradius = baseshape[1]
+
+        partpos = jointpos + (partpos - jointpos) * initial_scale
+        
+        part.set_scale(initial_scale)
+        part.set_position(partpos)
+        part.set_style(STYLE_NORMAL)
+        self.parts.append(part)
+        destpart.body.attach(part.body, jointpos)

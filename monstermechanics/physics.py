@@ -39,7 +39,12 @@ class AbstractBody(object):
         return self.local_to_world(Vector(0, 0))
 
     def set_position(self, pos):
-        raise NotImplementedError("AbstractPhysics.set_position()")
+        """Sets the position of the body."""
+        raise NotImplementedError("AbstractBody.set_position()")
+
+    def set_scale(self, scale):
+        """Scale the body to a fraction of its original size."""
+        raise NotImplementedError("AbstractBody.set_scale()")
 
     def attach(self, other, anchor_point):
         """Attach this body to another body using a pin joint at anchor_point""" 

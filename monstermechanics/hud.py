@@ -142,7 +142,7 @@ class Shelf(object):
         if self.draggedpart:
             self.draggedpart.set_position(v(x, y))
             try:
-                self.monster.attach(self.draggedpart)
+                self.monster.attach_and_grow(self.draggedpart)
             except ValueError:
                 pass
         self.draggedpart = None
