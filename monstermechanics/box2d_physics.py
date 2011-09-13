@@ -35,7 +35,7 @@ class Box2DWorld(AbstractWorld):
         ground = self.world.GetGroundBody()
 
         groundshape = b2PolygonDef()
-        groundshape.SetAsBox(PHYSICS_WIDTH, y * 2, (0, 0), 0)
+        groundshape.SetAsBox(PHYSICS_WIDTH, 1000, (0, y - 1000), 0)
         ground.CreateShape(groundshape)
         self.ground = Box2DGround(self, ground)
         return self.ground
@@ -83,6 +83,8 @@ class Box2DBody(AbstractBody):
 
     def create_shapes(self):
         self.shapes = []
+        if len(self.circles) > 1:
+            print self.circles
         for centre, radius in self.circles:
             circledef = b2CircleDef()
             circledef.localPosition = centre * self.scale
@@ -122,6 +124,9 @@ class Box2DBody(AbstractBody):
 
     def local_to_world(self, point):
         return self.body.LocalToWorld(point)
+
+    def apply_torque(self, torque):
+        self.body.ApplyTorque(torque)
 
     def attach(self, another, anchor_point):
         joint = b2RevoluteJointDef()

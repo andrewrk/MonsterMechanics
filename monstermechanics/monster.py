@@ -51,9 +51,15 @@ class BodyPart(object):
 
             # cache it
             BodyPart.part_definitions[name] = definition
-        
+            
+
+        offset = v(definition['offset'])
+        circles = [(v(0, 0), definition['radius'])]
+        for p in definition.get('points', []):
+            centre = v(p['offset']) + offset
+            circles.append((v(centre.x, -centre.y), p['radius']))
         cls._img = definition['img']
-        cls._shapes = [(v(0, 0), definition['radius'])]
+        cls._shapes = circles 
 
     def __init__(self, pos):
         self.sprite = pyglet.sprite.Sprite(self._img)
@@ -204,9 +210,18 @@ class EggSack(BodyPart):
     RESOURCE_NAME = 'egg-sack'
 
 
+class Leg(BodyPart):
+    RESOURCE_NAME = 'leg-level1'
+
+    def update(self, dt):
+        super(Leg, self).update(dt)
+        #FIXME: only apply torque if the leg is touching the ground
+        self.body.apply_torque(-10000 * self.body.get_rotation())
+
 
 PART_CLASSES = {
     'head': Head,
+    'leg': Leg,
     'heart': Heart,
     'lung': Lung,
     'eyeball': Eyeball,

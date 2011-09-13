@@ -1,1 +1,1 @@
-{"radius": 25, "name": "sprites/leg-level1.png", "offset": [-41, -27]}
+{"points": [{"radius": 41, "name": "1", "offset": [40, 98]}], "radius": 25, "name": "sprites/leg-level1.png", "offset": [-41, -27]}

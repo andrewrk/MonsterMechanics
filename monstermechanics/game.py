@@ -104,7 +104,7 @@ class Game(object):
         #self.buildMonster()
         physics = get_physics()
         self.world = physics.create_world(gravity=v(0, -500))
-        self.world.create_ground(20)
+        self.world.create_ground(40)
         self.monster = Monster.create_initial(self.world, v(50, 200))
 
         Shelf.load()
