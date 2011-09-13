@@ -61,6 +61,7 @@ class Circle(object):
         self.name = name
         self.offset = offset
         self.radius = radius
+        self.hidden = False
 
         self.handles = [
             Handle(self.offset, listeners=[self.on_centrehandle_move]),
@@ -105,6 +106,42 @@ class Editor(object):
         self.shapes.append(shape)
         self.handles += shape.handles
 
+    def set_shape(self, id, shape):
+        if (len(self.shapes) - 1) < id:
+            self.shapes += [None] * (len(self.shapes) - 1 - id)
+        self.shapes[id] = shape
+        self.handles += shape.handles
+
+    def show_shape(self, id):
+        shape = self.shapes[id]
+        shape.hidden = False
+        self.handles += shape.handles
+
+    def hide_shape(self, id):
+        shape = self.shapes[id]
+        shape.hidden = True
+        for h in shape.handles:
+            self.handles.remove(h)
+
+    def toggle_shape(self, id):
+        try:
+            s = self.shapes[id]
+        except IndexError:
+            pass
+        else:
+            if s is not None:
+                if s.hidden:
+                    self.show_shape(id)
+                else:
+                    self.hide_shape(id)
+                return
+        self.add_shape(Circle(str(id), (0, 0), 50))
+
+    def visible_shapes(self):
+        for s in self.shapes:
+            if s is not None and not s.hidden:
+                yield s
+
     @staticmethod
     def blank(name):
         return Editor(name, 50, (0, 0))
@@ -134,6 +171,8 @@ class Editor(object):
 
         points = []
         for s in self.shapes[1:]:
+            if s is None or s.hidden:
+                continue
             points.append({
                 'name': s.name,
                 'radius': s.radius,
@@ -231,8 +270,15 @@ class Editor(object):
                 self.selected.move_by(-1, 0)
             elif event.key == pygame.K_RIGHT:
                 self.selected.move_by(1, 0)
-        elif event.key == pygame.K_a:
-            self.add_shape(Circle('rel', (0, 0), 50))
+
+        if event.key == pygame.K_1:
+            self.toggle_shape(1)
+        elif event.key == pygame.K_2:
+            self.toggle_shape(2)
+        elif event.key == pygame.K_3:
+            self.toggle_shape(3)
+        elif event.key == pygame.K_3:
+            self.toggle_shape(4)
         elif event.key == pygame.K_s:
             self.save()
         elif event.key == pygame.K_ESCAPE:
@@ -255,7 +301,7 @@ class Editor(object):
         #pygame.draw.circle(self.screen, ring, (400, 240), self.radius, 1) 
         #pygame.draw.circle(self.screen, self.RED, (400, 240), 0) 
         #pygame.draw.circle(self.screen, ring, self.rel_to_screen(self.handle), 3, 1)
-        for shape in self.shapes:
+        for shape in self.visible_shapes():
             shape.draw(self)
         pygame.display.flip()
 
