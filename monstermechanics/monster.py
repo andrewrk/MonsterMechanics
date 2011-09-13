@@ -79,6 +79,9 @@ class BodyPart(object):
         else:
             self.sprite.position = pos
 
+    def get_shapes(self):
+        return [(c * self.scale, r * self.scale) for c, r in self._shapes]
+
     def get_position(self):
         if self.body:
             return self.body.get_position()
@@ -141,6 +144,13 @@ class Head(BodyPart):
 class Lung(BodyPart):
     """Lungs that supply energy to connected parts"""
 
+    phase = 0
+
+    def update(self, dt):
+        self.phase += dt
+        s = 0.1 * math.cos(self.phase) + 0.9
+        self.set_scale(self.scale * 0.97 + s * 0.03)
+
 
 class Monster(object):
     @classmethod
@@ -174,7 +184,7 @@ class Monster(object):
         partradius = baseshape[1]
         for p in self.parts:
             ppos = p.get_position()
-            for centre, radius in p._shapes:
+            for centre, radius in p.get_shapes():
                 c = centre + ppos
                 vec = (partpos - c)
                 if vec.length2 < (radius + partradius) * (radius + partradius):
