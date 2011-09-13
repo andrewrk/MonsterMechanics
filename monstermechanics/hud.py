@@ -73,6 +73,8 @@ class Shelf(object):
         self.monster = monster
         self.icons = {}
         self.init_icons()
+        self.scroll_y = 0
+        self.mousedown = False
 
     def init_icons(self):
         self.batch = pyglet.graphics.Batch()
@@ -87,9 +89,19 @@ class Shelf(object):
             self.icons[name] = particon 
             y -= ICON_HEIGHT + ICON_SEP
 
+        self.height = ICON_SEP - y
+
         # Mouse handling
         self.draggedicon = None
         self.draggedpart = None
+
+    def update(self, dt):
+        if not self.mousedown:
+            if self.scroll_y < 0:
+                self.scroll_y *= 0.001 ** dt
+            max_scroll = self.height - 30
+            if self.scroll_y > max_scroll:
+                self.scroll_y = max_scroll + (self.scroll_y - max_scroll) * 0.001 ** dt
 
     def get_icon(self, name):
         return self.icons[name]
@@ -98,16 +110,29 @@ class Shelf(object):
         gl.glLoadIdentity()
         if self.draggedpart:
             self.draggedpart.draw()
+        gl.glTranslatef(0, self.scroll_y, 0)
         self.batch.draw()
+        gl.glLoadIdentity()
 
     def icon_for_point(self, x, y):
-        point = v(x, y)
+        point = v(x, y) - v(0, self.scroll_y)
         for i in self.icons.values():
             if i.contains(point):
                 return i.name
 
     def on_mouse_press(self, x, y, button, modifiers):
         self.draggedicon = self.icon_for_point(x, y)
+        self.mousedown = True
+
+    def on_mouse_scroll(self, x, y, scroll_x, scroll_y):
+        if x > (853 - ICON_HEIGHT - MARGIN):
+            if scroll_y > 0:
+                if self.scroll_y > 0:
+                    self.scroll_y = max(0, self.scroll_y - scroll_y * 30)
+            else:
+                max_scroll = self.height - 30
+                if self.scroll_y < max_scroll:
+                    self.scroll_y = min(max_scroll, self.scroll_y - scroll_y * 30)
 
     def create_virtual_part(self, name, pos):
         try:
@@ -120,6 +145,9 @@ class Shelf(object):
             return cls
 
     def on_mouse_drag(self, x, y, dx, dy, button, modifiers):
+        if x > (853 - ICON_HEIGHT - MARGIN) and not self.draggedpart:
+            self.scroll_y += dy
+
         if self.draggedicon and x < (853 - ICON_HEIGHT - MARGIN):
             self.draggedpart = self.create_virtual_part(self.draggedicon, v(x, y))
             self.draggedicon = None
@@ -143,3 +171,4 @@ class Shelf(object):
                 pass
         self.draggedpart = None
         self.draggedicon = None
+        self.mousedown = False

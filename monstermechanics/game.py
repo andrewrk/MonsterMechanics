@@ -82,6 +82,7 @@ class Game(object):
     def update(self, dt):
         self.monster.update(dt)
         self.world.update(dt)
+        self.hud.update(dt)
 
     def on_draw(self):
         self.window.clear()
@@ -119,6 +120,7 @@ class Game(object):
             on_mouse_press=self.hud.on_mouse_press,
             on_mouse_release=self.hud.on_mouse_release,
             on_mouse_drag=self.hud.on_mouse_drag,
+            on_mouse_scroll=self.hud.on_mouse_scroll,
         )
 
         pyglet.app.run()

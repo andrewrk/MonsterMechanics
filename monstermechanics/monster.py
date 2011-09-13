@@ -160,6 +160,7 @@ class OutFacingPart(BodyPart):
 class Wing(OutFacingPart):
     RESOURCE_NAME = 'wing-level1'
 
+
 class Spikes(OutFacingPart):
     RESOURCE_NAME = 'spikes-level1'
 
