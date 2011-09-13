@@ -25,6 +25,7 @@ class BodyPart(object):
     """
 
     part_definitions = {}
+    ROTATE_TO_JOINT = False
 
     @classmethod
     def load(cls):
@@ -59,6 +60,9 @@ class BodyPart(object):
         self.body = None
         self.scale = 1.0
         self.set_position(pos)
+
+    def position_to_joint(self, joint_vector):
+        pass
 
     def set_style(self, style):
         """Set a display style for the part.
@@ -141,22 +145,67 @@ class Head(BodyPart):
     RESOURCE_NAME = 'head-level1'
 
 
+class Eyeball(BodyPart):
+    """An eyeball. Improves accuracy."""
+
+
+class OutFacingPart(BodyPart):
+    def position_to_joint(self, joint_vector):
+        a = joint_vector.angle
+        self.sprite.rotation = 180 - a
+        if self.body:
+            self.body.set_rotation(-self.sprite.rotation * math.pi / 180.0)
+
+
+class Wing(OutFacingPart):
+    RESOURCE_NAME = 'wing-level1'
+
+class Spikes(OutFacingPart):
+    RESOURCE_NAME = 'spikes-level1'
+
+
+class Scales(OutFacingPart):
+    RESOURCE_NAME = 'scales-level1'
+
+
 class Lung(BodyPart):
     """Lungs that supply energy to connected parts"""
 
     phase = 0
+    pulse_rate = 1
+    pulse_amount = 0.1
 
     def update(self, dt):
-        self.phase += dt
-        s = 0.1 * math.cos(self.phase) + 0.9
+        self.phase += dt * self.pulse_rate
+        s = self.pulse_amount * math.cos(self.phase) + 1 - self.pulse_amount
         self.set_scale(self.scale * 0.97 + s * 0.03)
 
 
+class Heart(Lung):
+    RESOURCE_NAME = 'heart-level1'
+    pulse_rate = 3
+    pulse_amount = 0.3
+
+
+PART_CLASSES = {
+    'head': Head,
+    'heart': Heart,
+    'lung': Lung,
+    'eyeball': Eyeball,
+    'spikes': Spikes,
+    'scales': Scales,
+    'wing': Wing,
+}
+
 class Monster(object):
+    @staticmethod
+    def load_all():
+        for cls in PART_CLASSES.values():
+            cls.load() 
+
     @classmethod
     def create_initial(cls, world, pos):
-        Head.load() 
-        Lung.load() 
+        Monster.load_all()
         head = Head(pos)
         head.create_body(world)
         lung = Lung(pos + v(80, 60)) 
@@ -204,6 +253,7 @@ class Monster(object):
 
         destpart, partpos, jointpos = attachment
         part.set_position(partpos)
+        part.position_to_joint(partpos - jointpos)
         part.create_body(self.world)
         part.set_style(STYLE_NORMAL)
         self.parts.append(part)
@@ -224,6 +274,7 @@ class Monster(object):
         
         part.set_scale(initial_scale)
         part.set_position(partpos)
+        part.position_to_joint(partpos - jointpos)
         part.set_style(STYLE_NORMAL)
         self.parts.append(part)
         destpart.body.attach(part.body, jointpos)

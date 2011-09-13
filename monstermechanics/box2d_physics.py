@@ -117,6 +117,9 @@ class Box2DBody(AbstractBody):
     def get_rotation(self):
         return self.body.angle
 
+    def set_rotation(self, radians):
+        self.body.angle = radians
+
     def local_to_world(self, point):
         return self.body.LocalToWorld(point)
 
@@ -140,8 +143,8 @@ class StiffJoint(object):
         self.joint = world.world.CreateJoint(jointdef).getAsType() 
         self.body1 = body1
         self.body2 = body2
-        self.b1_anchor = (v(*self.joint.GetAnchor1()) - body1.get_position()) / body1.scale
-        self.b2_anchor = (v(*self.joint.GetAnchor2()) - body2.get_position()) / body2.scale
+        self.b1_anchor = v(*self.jointdef.localAnchor1) / body1.scale
+        self.b2_anchor = v(*self.jointdef.localAnchor2) / body2.scale
 
     def rescale(self):
         """Reposition the joint anchors to match the bodys' current scale"""

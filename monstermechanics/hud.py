@@ -3,7 +3,7 @@ from pyglet import gl
 
 from vector import v
 
-from .monster import Head, Lung, STYLE_INVALID, STYLE_VALID
+from .monster import *
 
 
 ICON_HEIGHT = 64
@@ -57,11 +57,6 @@ class Shelf(object):
         ('mutagenbladder', 'sprites/icon-mutagenbladder.png'),
         ('eggsack', 'sprites/icon-eggsack.png'),
     ]
-
-    PARTS = {
-        'head': Head,
-        'lung': Lung
-    }
     
     @classmethod
     def load(cls):
@@ -87,7 +82,7 @@ class Shelf(object):
             s = pyglet.sprite.Sprite(self.images[name], batch=self.batch)
             s.set_position(x, y)
             particon = PartIcon(name, s)
-            if name not in self.PARTS:
+            if name not in PART_CLASSES:
                 particon.set_disabled(True)
             self.icons[name] = particon 
             y -= ICON_HEIGHT + ICON_SEP
@@ -116,7 +111,7 @@ class Shelf(object):
 
     def create_virtual_part(self, name, pos):
         try:
-            cls = self.PARTS[name]
+            cls = PART_CLASSES[name]
         except KeyError:
             return None
         else:
@@ -132,7 +127,8 @@ class Shelf(object):
         if self.draggedpart:
             self.draggedpart.set_position(v(x, y))
             attachment = self.monster.attachment_point(self.draggedpart)
-            if self.monster.can_attach(self.draggedpart):
+            if attachment is not None:
+                self.draggedpart.position_to_joint(attachment[1] - attachment[2])
                 self.draggedpart.set_position(attachment[1])
                 self.draggedpart.set_style(STYLE_VALID)
             else:

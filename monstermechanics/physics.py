@@ -30,6 +30,9 @@ class AbstractBody(object):
     def get_rotation(self):
         """Return the rotation of the body in radians"""
 
+    def set_rotation(self, radians):
+        """Set the rotation of the body in radians"""
+
     def local_to_world(self, point):
         """Return the position of point relative to the body in world space."""
 
