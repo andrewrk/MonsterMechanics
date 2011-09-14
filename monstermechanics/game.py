@@ -112,7 +112,7 @@ class Game(object):
         physics = get_physics()
         self.world = physics.create_world(gravity=v(0, -500))
         self.world.create_ground(40)
-        self.monster = Monster.create_initial(self.world, v(50, 200))
+        self.monster = Monster.create_initial(self.world, v(400, 80))
 
         Shelf.load()
         self.hud = Shelf(self.world, self.monster)

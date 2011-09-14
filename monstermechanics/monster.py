@@ -249,10 +249,7 @@ class Monster(object):
         Monster.load_all()
         head = Head(pos)
         head.create_body(world)
-        lung = Lung(pos + v(80, 60)) 
-        lung.create_body(world)
-        head.body.attach(lung.body, pos + v(50, 30))
-        return cls(world, [head, lung])
+        return cls(world, [head])
 
     def __init__(self, world, parts):
         self.world = world
@@ -261,9 +258,11 @@ class Monster(object):
         self.moving = 0
 
     def add_part(self, part):
-        self.parts.append(part)
         if isinstance(part, Leg):
             self.leg_count += 1
+            self.parts.insert(0, part)
+        else:
+            self.parts.append(part)
 
     def remove_part(self, part):
         self.parts.remove(part)
