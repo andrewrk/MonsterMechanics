@@ -73,7 +73,7 @@ class Box2DGround(AbstractBody):
 
 
 class Box2DBody(AbstractBody):
-    def __init__(self, world, circles, density=0.0001, restitution=0.1, friction=1):
+    def __init__(self, world, circles, density=0.00001, restitution=0.1, friction=1):
         self.world = world
         self.circles = circles
         self.density = density
@@ -138,7 +138,7 @@ class Box2DBody(AbstractBody):
 
     def attach(self, another, anchor_point):
         joint = b2RevoluteJointDef()
-        joint.maxMotorTorque = 20000.0
+        joint.maxMotorTorque = 30000.0
         joint.motorSpeed = 0
         joint.enableMotor = True
         joint.Initialize(self.body, another.body, anchor_point)
