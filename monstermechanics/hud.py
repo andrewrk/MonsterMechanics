@@ -1,3 +1,4 @@
+from collections import namedtuple
 import pyglet
 from pyglet import gl
 
@@ -11,12 +12,60 @@ ICON_HALF = ICON_HEIGHT * 0.5
 MARGIN = 10
 ICON_SEP = 5
 
+class Digits(object):
+    ANCHOR_LEFT = 0
+    ANCHOR_CENTER = 0.5
+    ANCHOR_RIGHT = 1
+
+    @classmethod
+    def load(cls):
+        imgs = []
+        for i in range(10):
+            path = 'ui/digits/g%d.png' % i
+            imgs.append(pyglet.resource.image(path))
+        cls.images = imgs
+
+    def __init__(self, pos, value=0, anchor=ANCHOR_RIGHT):
+        self.pos = pos
+        self.anchor = anchor
+        self.value = value
+        self.display_value = value
+
+    def set(self, value):
+        self.value = value
+
+    def get_digits(self):
+        return [int(c) for c in str(int(self.display_value + 0.5))]
+
+    def get_width(self):
+        w = 0
+        for d in self.get_digits():
+            w += self.images[d].width
+        return w
+    
+    def update(self, dt):
+        self.display_value = self.value + (self.display_value - self.value) * 0.1 ** (dt * 2)
+
+    def draw(self):
+        p = self.pos
+        w = self.get_width()
+        p += v(-1, 0) * w * self.anchor
+
+        gl.glEnable(gl.GL_BLEND)
+        gl.glBlendFunc(gl.GL_SRC_ALPHA, gl.GL_ONE_MINUS_SRC_ALPHA)
+        for d in self.get_digits():
+            img = self.images[d]
+            img.blit(*p)
+            p += v(1, 0) * img.width
+            
+
 
 class PartIcon(object):
-    def __init__(self, name, sprite):
+    def __init__(self, name, sprite, cost=100):
         self.name = name
         self.sprite = sprite
         self.disabled = False
+        self.cost = cost
 
     def set_disabled(self, disabled):
         self.disabled = disabled
@@ -34,9 +83,21 @@ class PartIcon(object):
 
         return l <= point.x < r and b <= point.y < t
 
+IconDef = namedtuple('IconDef', 'name sprite cost')
 
-class VirtualPart(object):
-    pass
+ICONS = [
+    IconDef('armclaw', 'sprites/icon-armclaw.png', 750),
+    IconDef('leg', 'sprites/icon-leg.png', 500),
+    IconDef('scales', 'sprites/icon-scales.png', 25),
+    IconDef('spikes', 'sprites/icon-spikes.png', 25),
+    IconDef('heart', 'sprites/icon-heart.png', 125),
+    IconDef('lung', 'sprites/icon-lung.png', 200),
+    IconDef('wing', 'sprites/icon-wing.png', 75),
+    IconDef('eyeball', 'sprites/icon-eyeball.png', 5),
+    IconDef('thistlegun', 'sprites/icon-thistlegun.png', 250),
+    IconDef('mutagenbladder', 'sprites/icon-mutagenbladder.png', 75),
+    IconDef('eggsack', 'sprites/icon-eggsack.png', 600),
+]
 
 
 class Shelf(object):
@@ -44,28 +105,18 @@ class Shelf(object):
     that the player can attach to a monster.
     """
 
-    IMAGES = [
-        ('armclaw', 'sprites/icon-armclaw.png'),
-        ('leg', 'sprites/icon-leg.png'),
-        ('scales', 'sprites/icon-scales.png'),
-        ('spikes', 'sprites/icon-spikes.png'),
-        ('heart', 'sprites/icon-heart.png'),
-        ('lung', 'sprites/icon-lung.png'),
-        ('wing', 'sprites/icon-wing.png'),
-        ('eyeball', 'sprites/icon-eyeball.png'),
-        ('thistlegun', 'sprites/icon-thistlegun.png'),
-        ('mutagenbladder', 'sprites/icon-mutagenbladder.png'),
-        ('eggsack', 'sprites/icon-eggsack.png'),
-    ]
-    
     @classmethod
     def load(cls):
+        Digits.load()
         imgs = {}
-        for name, path in cls.IMAGES:
-            img = pyglet.resource.image(path)
+        for icon in ICONS:
+            img = pyglet.resource.image(icon.sprite)
             img.anchor_x = 90 - ICON_HALF
             img.anchor_y = ICON_HALF
-            imgs[name] = img
+            imgs[icon.name] = img
+
+        cls.mutagen_label = pyglet.sprite.Sprite(pyglet.resource.image('ui/mutagen.png'))
+        cls.mutagen_label.position = v(20, 440)
         cls.images = imgs
 
     def __init__(self, world, monster):
@@ -76,17 +127,34 @@ class Shelf(object):
         self.scroll_y = 0
         self.mousedown = False
 
+        self.mutagen_count = Digits(v(20, 410), anchor=Digits.ANCHOR_LEFT)
+        self.set_mutagen(1000)
+
+    def set_mutagen(self, value):
+        self.mutagen_count.set(value)
+        v = self.mutagen_count.value
+        for i in self.icons.values():
+            i.set_disabled(i.cost > v)
+
+    def add_mutagen(self, value):
+        v = self.mutagen_count.value
+        self.set_mutagen(v + value)
+
+    def spend_mutagen(self, value):
+        v = self.mutagen_count.value
+        self.set_mutagen(v - value)
+
     def init_icons(self):
         self.batch = pyglet.graphics.Batch()
         x = 853 - ICON_HALF - MARGIN
         y = 400 + ICON_HALF - MARGIN
-        for name, path in self.IMAGES:
-            s = pyglet.sprite.Sprite(self.images[name], batch=self.batch)
+        for icon in ICONS:
+            s = pyglet.sprite.Sprite(self.images[icon.name], batch=self.batch)
             s.set_position(x, y)
-            particon = PartIcon(name, s)
-            if name not in PART_CLASSES:
+            particon = PartIcon(icon.name, s, cost=icon.cost)
+            if icon.name not in PART_CLASSES:
                 particon.set_disabled(True)
-            self.icons[name] = particon 
+            self.icons[icon.name] = particon 
             y -= ICON_HEIGHT + ICON_SEP
 
         self.height = ICON_SEP - y
@@ -103,6 +171,8 @@ class Shelf(object):
             if self.scroll_y > max_scroll:
                 self.scroll_y = max_scroll + (self.scroll_y - max_scroll) * 0.001 ** dt
 
+        self.mutagen_count.update(dt)
+
     def get_icon(self, name):
         return self.icons[name]
 
@@ -113,11 +183,13 @@ class Shelf(object):
         gl.glTranslatef(0, self.scroll_y, 0)
         self.batch.draw()
         gl.glLoadIdentity()
+        self.mutagen_label.draw()
+        self.mutagen_count.draw()
 
     def icon_for_point(self, x, y):
         point = v(x, y) - v(0, self.scroll_y)
         for i in self.icons.values():
-            if i.contains(point):
+            if i.contains(point) and not i.disabled:
                 return i.name
 
     def on_mouse_press(self, x, y, button, modifiers):
@@ -141,6 +213,7 @@ class Shelf(object):
             return None
         else:
             cls = cls(pos)
+            cls.cost = self.icons[name].cost
             cls.set_style(STYLE_INVALID)
             return cls
 
@@ -169,6 +242,8 @@ class Shelf(object):
                 self.monster.attach_and_grow(self.draggedpart)
             except ValueError:
                 pass
+            else:
+                self.spend_mutagen(self.draggedpart.cost)
         self.draggedpart = None
         self.draggedicon = None
         self.mousedown = False
