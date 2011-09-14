@@ -10,6 +10,9 @@ STYLE_NORMAL = 0
 STYLE_VALID = 1
 STYLE_INVALID = 2
 
+LEFT = -1
+RIGHT = 1
+
 
 class BodyPart(object):
     """Base class of all body parts.
@@ -71,8 +74,7 @@ class BodyPart(object):
         pass
 
     def set_style(self, style):
-        """Set a display style for the part.
-        """ 
+        """Set a display style for the part.""" 
         if style == STYLE_VALID:
             self.sprite.color = (0, 160, 0)
             self.sprite.opacity = 80
@@ -84,12 +86,14 @@ class BodyPart(object):
             self.sprite.opacity = 255
     
     def set_position(self, pos):
+        """Move the part."""
         if self.body:
             self.body.set_position(pos)
         else:
             self.sprite.position = pos
 
     def get_shapes(self):
+        """Return the physics volumes in the shape."""
         return [(c * self.scale, r * self.scale) for c, r in self._shapes]
 
     def get_position(self):
@@ -213,24 +217,11 @@ class EggSack(BodyPart):
 class Leg(BodyPart):
     RESOURCE_NAME = 'leg-level1'
 
-    last_rot = 0
-    torque = 0
-
     def update(self, dt):
         super(Leg, self).update(dt)
         #FIXME: only apply torque if the leg is touching the ground
         rot = self.body.get_rotation()
-        drot = (self.last_rot - rot) / dt
-        self.last_rot = rot
-
-        #FIXME: apply a bit more intelligence here
-        target_drot = -rot
-        
-        if abs(drot) < abs(target_drot):
-            self.torque += 10000 * (target_drot - drot) * dt
-        else:
-            self.torque *= 0.1 ** dt
-        self.body.apply_torque(self.torque)
+        self.body.apply_torque(rot * -20000)
 
 
 PART_CLASSES = {
@@ -266,6 +257,19 @@ class Monster(object):
     def __init__(self, world, parts):
         self.world = world
         self.parts = parts
+        self.leg_count = len([p for p in parts if isinstance(p, Leg)])
+        self.moving = 0
+
+    def add_part(self, part):
+        self.parts.append(part)
+        if isinstance(part, Leg):
+            self.leg_count += 1
+
+    def remove_part(self, part):
+        self.parts.remove(part)
+        part.body.destroy()
+        if isinstance(part, Leg):
+            self.leg_count -= 1
 
     def draw(self):
         for p in self.parts:
@@ -292,9 +296,22 @@ class Monster(object):
     def can_attach(self, part):
        return self.attachment_point(part) is not None 
 
+    phase = 0
+
     def update(self, dt):
         for p in self.parts:
             p.update(dt)
+        if self.moving in [LEFT, RIGHT]:
+            self.phase += self.moving * dt * 6
+            for p in self.parts:
+                if not isinstance(p, Leg):
+                    continue
+                ppos = p.get_position()
+                step = math.sin(ppos.x / 50.0 + self.phase)
+                f = step * 0.5 + 0.5
+                p.set_position(ppos + v(self.moving * 200 * f * dt, 10 * f * dt))
+                rot = p.body.get_rotation()
+                p.body.set_rotation(rot + self.moving * step * dt) 
 
     def attach(self, part):
         attachment = self.attachment_point(part)
@@ -306,7 +323,7 @@ class Monster(object):
         part.position_to_joint(partpos - jointpos)
         part.create_body(self.world)
         part.set_style(STYLE_NORMAL)
-        self.parts.append(part)
+        self.add_part(part)
         destpart.body.attach(part.body, jointpos)
 
     def attach_and_grow(self, part, initial_scale=0.1):
@@ -326,5 +343,5 @@ class Monster(object):
         part.set_position(partpos)
         part.position_to_joint(partpos - jointpos)
         part.set_style(STYLE_NORMAL)
-        self.parts.append(part)
+        self.add_part(part)
         destpart.body.attach(part.body, jointpos)

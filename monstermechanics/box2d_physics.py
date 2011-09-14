@@ -64,9 +64,16 @@ class Box2DGround(AbstractBody):
     def local_to_world(self, point):
         return self.body.LocalToWorld(point)
 
+    def destroy(self):
+        if self.body is not None:
+            self.world.DestroyBody(self.body)
+            self.body = None
+
+    __del__ = destroy
+
 
 class Box2DBody(AbstractBody):
-    def __init__(self, world, circles, density=0.00001, restitution=0.1, friction=0.5):
+    def __init__(self, world, circles, density=0.0001, restitution=0.1, friction=1):
         self.world = world
         self.circles = circles
         self.density = density
@@ -123,12 +130,15 @@ class Box2DBody(AbstractBody):
     def local_to_world(self, point):
         return self.body.LocalToWorld(point)
 
+    def apply_force(self, force, point):
+        self.body.ApplyForce(force, point)
+
     def apply_torque(self, torque):
         self.body.ApplyTorque(torque)
 
     def attach(self, another, anchor_point):
         joint = b2RevoluteJointDef()
-        joint.maxMotorTorque = 10000.0
+        joint.maxMotorTorque = 20000.0
         joint.motorSpeed = 0
         joint.enableMotor = True
         joint.Initialize(self.body, another.body, anchor_point)
@@ -136,6 +146,15 @@ class Box2DBody(AbstractBody):
         self.joints.append(j)
         another.joints.append(j)
         self.world.add_update_callback(j.update)
+
+    def destroy(self):
+        for j in self.joints:
+            j.destroy()
+        if self.body is not None:
+            self.world.DestroyBody(self.body)
+            self.body = None
+
+    __del__ = destroy
 
 
 class StiffJoint(object):
@@ -161,3 +180,11 @@ class StiffJoint(object):
         gain = 0.15
         self.joint.SetMotorSpeed(-gain * angleError)
 
+    def destroy(self):
+        if self.joint is not None:
+            self.world.world.DestroyJoint(self.joint)
+            self.body1.joints.remove(self)
+            self.body2.joints.remove(self)
+        self.joint = None
+
+    __del__ = destroy

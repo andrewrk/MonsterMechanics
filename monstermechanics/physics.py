@@ -53,8 +53,15 @@ class AbstractBody(object):
         """Attach this body to another body using a pin joint at anchor_point""" 
         raise NotImplementedError("AbstractPhyscs.attach()")
 
+    def apply_force(self, force, world_point):
+        raise NotImplementedError("AbstractPhyscs.apply_force()")
+
     def apply_torque(self, torque):
         raise NotImplementedError("AbstractPhyscs.apply_torque()")
+
+    def destroy(self):
+        """Destroy the body and all joints."""
+        raise NotImplementedError("AbstractPhysics.destroy()")
 
 
 class AbstractPhysics(object):

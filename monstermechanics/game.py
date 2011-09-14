@@ -7,7 +7,7 @@ from vector import v
 from .physics import get_physics
 
 from .hud import Shelf
-from .monster import Monster
+from .monster import Monster, LEFT, RIGHT
 from .background import Background
 
 import math
@@ -80,6 +80,13 @@ class Game(object):
         return val
 
     def update(self, dt):
+        if self.control_state[Control.MoveLeft]:
+            self.monster.moving = LEFT
+        elif self.control_state[Control.MoveRight]:
+            self.monster.moving = RIGHT
+        else:
+            self.monster.moving = 0
+
         self.monster.update(dt)
         self.world.update(dt)
         self.hud.update(dt)
