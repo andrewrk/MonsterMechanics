@@ -28,7 +28,7 @@ class BodyPart(object):
     """
 
     part_definitions = {}
-    ROTATE_TO_JOINT = False
+    ATTACH_CENTER = False
 
     @classmethod
     def load(cls):
@@ -122,9 +122,14 @@ class BodyPart(object):
             self.sprite.set_position(*self.body.get_position())
             self.sprite.rotation = -180 / math.pi * self.body.get_rotation()
         self.sprite.draw()
-        #for child_pin in self.child_pins:
-        #    child_pin.child.draw()
 
+    def can_attach(self, another):
+        """Return True if another can be permitted to attach to this part"""
+        return True
+
+    def attachment_radius(self, another):
+        return None
+    
     def get_bounding_box(self):
         sw, ne = self._get_bounding_box()
         for child in self.child_pins:
@@ -157,6 +162,8 @@ class Head(BodyPart):
 
 class Eyeball(BodyPart):
     """An eyeball. Improves accuracy."""
+    def can_attach(self, another):
+        return False
 
 
 class OutFacingPart(BodyPart):
@@ -167,16 +174,23 @@ class OutFacingPart(BodyPart):
             self.body.set_rotation(-self.sprite.rotation * math.pi / 180.0)
 
 
-class Wing(OutFacingPart):
+class Wing(BodyPart):
     RESOURCE_NAME = 'wing-level1'
+    ATTACH_CENTER = True
 
 
 class Spikes(OutFacingPart):
     RESOURCE_NAME = 'spikes-level1'
 
+    def can_attach(self, another):
+        return False
+
 
 class Scales(OutFacingPart):
     RESOURCE_NAME = 'scales-level1'
+
+    def can_attach(self, another):
+        return False
 
 
 class PulsingBodyPart(BodyPart):
@@ -285,12 +299,17 @@ class Monster(object):
         partpos += baseshape[0]
         partradius = baseshape[1]
         for p in self.parts:
+            if not p.can_attach(part):
+                continue
             ppos = p.get_position()
             for centre, radius in p.get_shapes():
                 c = centre + ppos
                 vec = (partpos - c)
                 if vec.length2 < (radius + partradius) * (radius + partradius):
-                    return p, c + vec.scaled_to(radius + partradius), c + vec.scaled_to(radius)
+                    if part.ATTACH_CENTER:
+                        return p, c, c
+                    else:
+                        return p, c + vec.scaled_to(radius + partradius), c + vec.scaled_to(radius)
 
     def can_attach(self, part):
        return self.attachment_point(part) is not None 
