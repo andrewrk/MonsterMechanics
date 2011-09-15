@@ -30,6 +30,7 @@ class BodyPart(object):
 
     ATTACH_CENTER = False
     DEFAULT_PART = 'default'
+    type = 'body'
 
     @classmethod
     def load(cls):
@@ -78,8 +79,12 @@ class BodyPart(object):
         self.scale = 1.0
         self.set_position(pos)
 
-    def position_to_joint(self, joint_vector):
-        pass
+    def subparts(self):
+        """In nested bodies, return sub-bodies."""
+        return [self]
+
+    def position_to_joint(self, joint):
+        """Default implementation does nothing."""
 
     def set_style(self, style):
         """Set a display style for the part.""" 
@@ -113,9 +118,9 @@ class BodyPart(object):
         else:
             return v(*self.sprite.position)
 
-    def create_body(self, world):
+    def create_body(self, world, name):
         """Create the physics body for the part"""
-        self.body = world.create_body(self.get_shapes())
+        self.body = world.create_body(self.get_shapes(), collision_class=name + self.type)
         self.body.set_position(v(*self.sprite.position))
 
     def set_scale(self, scale):
@@ -141,30 +146,7 @@ class BodyPart(object):
 
     def attachment_radius(self, another):
         return None
-    
-    def get_bounding_box(self):
-        sw, ne = self._get_bounding_box()
-        for child in self.child_pins:
-            child_sw, child_ne = child.child.get_bounding_box()
-            sw.x = min(sw.x, child_sw.x)
-            sw.y = min(sw.y, child_sw.y)
-            ne.x = max(ne.x, child_ne.x)
-            ne.y = max(ne.y, child_ne.y)
-        return sw, ne
 
-    def _get_bounding_box(self):
-        cx, cy = -self.sprite.image.anchor_x, -self.sprite.image.anchor_y
-        cx2, cy2 = self.sprite.image.width + cx, self.sprite.image.height + cy
-        rot_trig = trig(self.get_angle())
-        rot_trig2 = trig(self.get_angle()+math.pi/2)
-        p1 = cx *  rot_trig + cy2 * rot_trig2
-        p2 = cy2 * rot_trig + cx2 * rot_trig2
-        p3 = cx2 * rot_trig + cy  * rot_trig2
-        p4 = cy *  rot_trig + cx  * rot_trig2
-        return (
-            v(min(p1.x, p2.x, p3.x, p4.x), min(p1.y, p2.y, p3.y, p4.y)),
-            v(max(p1.x, p2.x, p3.x, p4.x), max(p1.y, p2.y, p3.y, p4.y)),
-        )
 
 
 def resource_levels(base):
@@ -188,6 +170,9 @@ class LeafPart(BodyPart):
 class Head(UpgradeablePart):
     """The head of the monster"""
     RESOURCES = resource_levels('head')
+
+    def can_attach(self, part):
+        return not part.ATTACH_CENTER
 
 
 class Eyeball(LeafPart):
@@ -273,15 +258,80 @@ class Leg(UpgradeablePart):
         self.body.apply_torque(rot * -20000)
 
 
-class Arm(BodyPart):
+class LowerArm(BodyPart):
+    type = 'arm'
     RESOURCES = {
-        'upper-arm': 'upper-arm',
-        'lower-arm': 'lower-arm'
+        'default': 'lower-arm'
     }
+
+class UpperArm(BodyPart):
+    type = 'arm'
+    RESOURCES = {
+        'default': 'upper-arm'
+    }
+
+
+class Arm(BodyPart):
+    ATTACH_CENTER = True
+
+    @classmethod
+    def load(cls):
+        UpperArm.load()
+        LowerArm.load()
+
+    @property
+    def body(self):
+        return self.upper.body
+
+    def update(self, dt):
+        self.upper.update(dt)
+        self.lower.update(dt)
+
+    def subparts(self):
+        return [self.upper, self.lower]
+
+    def __init__(self, pos):
+        self.upper = UpperArm(pos)
+        self.lower = LowerArm(pos + self.upper.get_shapes()[1].center)
+
+    def set_scale(self, scale):
+        self.upper.set_scale(scale)
+        self.lower.set_scale(scale)
+
+    def set_style(self, style):
+        self.upper.set_style(style)
+        self.lower.set_style(style)
+
+    def create_body(self, world, name):
+        self.upper.create_body(world, name)
+        self.lower.create_body(world, name)
+        self.joint = self.upper.body.attach(self.lower.body, self.lower.get_position())
+
+    def get_shapes(self):
+        return self.upper.get_shapes() + self.lower.get_shapes()[1:]
+
+    def set_position(self, pos):
+        """Move the part."""
+        if self.upper.body:
+            delta = pos - self.upper.get_position()
+            self.upper.set_position(pos)
+            self.lower.set_position(self.lower.get_position() + delta)
+        else:
+            self.upper.set_position(pos)
+            self.lower.set_position(self.upper.get_position() + self.upper.get_shapes()[1].center)
+
+    def get_position(self):
+        return self.upper.get_position()
+
+    def draw(self):
+        self.upper.draw()
+        self.lower.draw()
+        
 
 
 PART_CLASSES = {
     'head': Head,
+    'arm': Arm,
     'claw': Claw,
     'leg': Leg,
     'heart': Heart,
@@ -302,15 +352,16 @@ class Monster(object):
             cls.load() 
 
     @classmethod
-    def create_initial(cls, world, pos):
+    def create_initial(cls, world, pos, name='player'):
         Monster.load_all()
         head = Head(pos)
-        head.create_body(world)
+        head.create_body(world, name)
         return cls(world, [head])
 
-    def __init__(self, world, parts):
+    def __init__(self, world, parts, name='player'):
         self.world = world
         self.parts = parts
+        self.name = name
         self.leg_count = len([p for p in parts if isinstance(p, Leg)])
         self.moving = 0
 
@@ -341,18 +392,19 @@ class Monster(object):
         baseshape = part.get_base_shape()
         partpos += baseshape.center
         partradius = baseshape.radius
-        for p in self.parts:
-            if not p.can_attach(part):
-                continue
-            ppos = p.get_position()
-            for centre, radius in p.get_shapes():
-                c = centre + ppos
-                vec = (partpos - c)
-                if vec.length2 < (radius + partradius) * (radius + partradius):
-                    if part.ATTACH_CENTER:
-                        return p, c, c
-                    else:
-                        return p, c + vec.scaled_to(radius + partradius), c + vec.scaled_to(radius)
+        for currentpart in self.parts:
+            for p in currentpart.subparts():
+                if not p.can_attach(part):
+                    continue
+                ppos = p.get_position()
+                for centre, radius in p.get_shapes():
+                    c = centre + ppos
+                    vec = (partpos - c)
+                    if vec.length2 < (radius + partradius) * (radius + partradius):
+                        if part.ATTACH_CENTER:
+                            return p, c, c
+                        else:
+                            return p, c + vec.scaled_to(radius + partradius), c + vec.scaled_to(radius)
 
     def can_attach(self, part):
        return self.attachment_point(part) is not None 
@@ -382,7 +434,7 @@ class Monster(object):
         destpart, partpos, jointpos = attachment
         part.set_position(partpos)
         part.position_to_joint(partpos - jointpos)
-        part.create_body(self.world)
+        part.create_body(self.world, self.name)
         part.set_style(STYLE_NORMAL)
         self.add_part(part)
         destpart.body.attach(part.body, jointpos)
@@ -393,7 +445,7 @@ class Monster(object):
             raise ValueError("Cannot attach part to this monster.")
 
         destpart, partpos, jointpos = attachment
-        part.create_body(self.world)
+        part.create_body(self.world, self.name)
 
         baseshape = part.get_base_shape()
         partradius = baseshape.radius

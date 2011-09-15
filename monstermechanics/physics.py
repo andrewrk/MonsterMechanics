@@ -9,6 +9,16 @@ replace the physics library easily or even write our own.
 """
 from vector import Vector
 
+# Collision classes and the other classes they collide with
+# These should be baked into bitmasks or whatever by the physics engine
+COLLISION_CLASSES = [
+    ('playerarm', ['playerarm', 'enemyarm', 'enemybody', 'enemyprojectile']),
+    ('playerbody', ['playerbody', 'enemyarm', 'enemybody', 'enemyprojectile']),
+    ('playerprojectile', ['enemybody', 'enemyarm', 'enemyprojectile']),
+    ('enemyarm', ['enemyarm', 'playerarm', 'playerbody', 'playerprojectile']),
+    ('enemybody', ['enemybody', 'playerarm', 'playerbody', 'playerprojectile']),
+    ('enemyprojectile', ['playerbody', 'playerarm', 'playerprojectile']),
+]
 
 class AbstractWorld(object):
     def update(self, dt):
@@ -50,7 +60,10 @@ class AbstractBody(object):
         raise NotImplementedError("AbstractBody.set_scale()")
 
     def attach(self, other, anchor_point):
-        """Attach this body to another body using a pin joint at anchor_point""" 
+        """Attach this body to another body using a pin joint at anchor_point.
+        
+        Returns a Joint object.
+        """ 
         raise NotImplementedError("AbstractPhyscs.attach()")
 
     def apply_force(self, force, world_point):

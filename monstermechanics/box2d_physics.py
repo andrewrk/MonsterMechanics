@@ -4,6 +4,23 @@ from Box2D import *
 from .physics import *
 from vector import v
 
+def make_bitmasks():
+    namebits = {}
+    for bit, (name, collideswith) in enumerate(COLLISION_CLASSES):
+        namebits[name] = 1 << bit
+
+    classes = {}
+    for name, collideswith in COLLISION_CLASSES:
+        mask = 0
+        for c in collideswith:
+            mask |= namebits[c]
+        category = namebits[name]
+        classes[name] = category, mask
+
+    return classes
+
+
+COLLISION_CLASSES = make_bitmasks()
 
 PHYSICS_WIDTH = 5000
 PHYSICS_HEIGHT = 2500
@@ -35,13 +52,15 @@ class Box2DWorld(AbstractWorld):
         ground = self.world.GetGroundBody()
 
         groundshape = b2PolygonDef()
+        groundshape.filter.categoryBits = 0xffff
+        groundshape.filter.maskBits = 0xffff
         groundshape.SetAsBox(PHYSICS_WIDTH, 1000, (0, y - 1000), 0)
         ground.CreateShape(groundshape)
         self.ground = Box2DGround(self, ground)
         return self.ground
 
-    def create_body(self, circles, density=0.00001, restitution=0.1, friction=0.5):
-        return Box2DBody(self, circles, density, restitution, friction)
+    def create_body(self, circles, density=0.00001, restitution=0.1, friction=0.5, collision_class=None):
+        return Box2DBody(self, circles, density, restitution, friction, collision_class=collision_class)
 
 
 class Box2DGround(AbstractBody):
@@ -73,12 +92,17 @@ class Box2DGround(AbstractBody):
 
 
 class Box2DBody(AbstractBody):
-    def __init__(self, world, circles, density=0.00001, restitution=0.1, friction=1):
+    def __init__(self, world, circles, density=0.00001, restitution=0.1, friction=1, collision_class=None):
         self.world = world
         self.circles = circles
         self.density = density
         self.restitution = restitution
         self.friction = friction
+        if collision_class is None:
+            self.collision_category = 0xffff
+            self.collision_mask = 0xffff
+        else:
+            self.collision_category, self.collision_mask = COLLISION_CLASSES[collision_class]
         self.joints = []
         self.scale = 1.0
 
@@ -92,6 +116,8 @@ class Box2DBody(AbstractBody):
         self.shapes = []
         for centre, radius in self.circles:
             circledef = b2CircleDef()
+            circledef.filter.categoryBits = self.collision_category
+            circledef.filter.maskBits = self.collision_mask
             circledef.localPosition = centre * self.scale
             circledef.radius = radius * self.scale
             circledef.density = self.density
