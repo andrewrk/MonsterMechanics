@@ -5,6 +5,7 @@ import pyglet
 import json
 
 from vector import v
+from geom import Circle
 
 STYLE_NORMAL = 0
 STYLE_VALID = 1
@@ -27,45 +28,52 @@ class BodyPart(object):
 
     """
 
-    part_definitions = {}
     ATTACH_CENTER = False
+    DEFAULT_PART = 'default'
 
     @classmethod
     def load(cls):
-        try:
-            name = cls.RESOURCE_NAME
-        except AttributeError:
-            name = cls.__name__.lower()
-
-        try:
-            definition = BodyPart.part_definitions[name]
-        except KeyError:
-            with pyglet.resource.file('components/%s.json' % name) as f:
+        if hasattr(cls, 'resources') or not hasattr(cls, 'RESOURCES'):
+            return
+        cls.resources = {}
+        for name, resource_file in cls.RESOURCES.items():
+            with pyglet.resource.file('components/%s.json' % resource_file) as f:
                 definition = json.loads(f.read())
 
-            # add image to it
+            # load the associated image
             img = pyglet.resource.image(definition['name'])
             # <mauve> [offset is] the amount you have to translate the image
             # <mauve> So -1 * the position of the centre in the image
             # also we have to flip the y axis because this is pyglet
             img.anchor_x = -definition['offset'][0]
-            img.anchor_y = img.height+definition['offset'][1]
+            img.anchor_y = img.height + definition['offset'][1]
             definition['img'] = img
 
-            # cache it
-            BodyPart.part_definitions[name] = definition
-            
+            offset = v(definition['offset'])
+            circles = [Circle(v(0, 0), definition['radius'])]
+            for p in definition.get('points', []):
+                centre = v(p['offset']) + offset
+                circles.append(Circle(v(centre.x, -centre.y), p['radius']))
+            definition['shapes'] = circles 
 
-        offset = v(definition['offset'])
-        circles = [(v(0, 0), definition['radius'])]
-        for p in definition.get('points', []):
-            centre = v(p['offset']) + offset
-            circles.append((v(centre.x, -centre.y), p['radius']))
-        cls._img = definition['img']
-        cls._shapes = circles 
+            # cache it
+            cls.resources[name] = definition
+    
+    def set_default_part(self):
+        self.set_part(self.DEFAULT_PART)
+
+    def set_part(self, name):
+        try:
+            self.part = self.resources[name]
+        except KeyError:
+            cls.load()
+            self.part = self.resources[name]
+
+        self.sprite = pyglet.sprite.Sprite(self.part['img'])
 
     def __init__(self, pos):
-        self.sprite = pyglet.sprite.Sprite(self._img)
+        self.sprite = None
+        self.set_default_part()
         self.body = None
         self.scale = 1.0
         self.set_position(pos)
@@ -92,9 +100,12 @@ class BodyPart(object):
         else:
             self.sprite.position = pos
 
+    def get_base_shape(self):
+        return self.get_shapes()[0]
+
     def get_shapes(self):
         """Return the physics volumes in the shape."""
-        return [(c * self.scale, r * self.scale) for c, r in self._shapes]
+        return [Circle(c * self.scale, r * self.scale) for c, r in self.part['shapes']]
 
     def get_position(self):
         if self.body:
@@ -103,7 +114,8 @@ class BodyPart(object):
             return v(*self.sprite.position)
 
     def create_body(self, world):
-        self.body = world.create_body(self._shapes)
+        """Create the physics body for the part"""
+        self.body = world.create_body(self.get_shapes())
         self.body.set_position(v(*self.sprite.position))
 
     def set_scale(self, scale):
@@ -155,18 +167,35 @@ class BodyPart(object):
         )
 
 
-class Head(BodyPart):
-    """The head of the monster"""
-    RESOURCE_NAME = 'head-level1'
+def resource_levels(base):
+    return {
+        'level1': '%s-level1' % base,
+        'level2': '%s-level2' % base,
+        'level3': '%s-level3' % base,
+    }
+    
+
+class UpgradeablePart(BodyPart):
+    DEFAULT_PART = 'level1'
 
 
-class Eyeball(BodyPart):
-    """An eyeball. Improves accuracy."""
+class LeafPart(BodyPart):
+    """A BodyPart nothing else can attach to."""
     def can_attach(self, another):
         return False
 
 
+class Head(UpgradeablePart):
+    """The head of the monster"""
+    RESOURCES = resource_levels('head')
+
+
+class Eyeball(LeafPart):
+    """An eyeball. Improves accuracy."""
+
+
 class OutFacingPart(BodyPart):
+    """A part that always attaches facing outwards from the part it attaches to"""
     def position_to_joint(self, joint_vector):
         a = joint_vector.angle
         self.sprite.rotation = 180 - a
@@ -174,26 +203,8 @@ class OutFacingPart(BodyPart):
             self.body.set_rotation(-self.sprite.rotation * math.pi / 180.0)
 
 
-class Wing(BodyPart):
-    RESOURCE_NAME = 'wing-level1'
-    ATTACH_CENTER = True
-
-
-class Spikes(OutFacingPart):
-    RESOURCE_NAME = 'spikes-level1'
-
-    def can_attach(self, another):
-        return False
-
-
-class Scales(OutFacingPart):
-    RESOURCE_NAME = 'scales-level1'
-
-    def can_attach(self, another):
-        return False
-
-
 class PulsingBodyPart(BodyPart):
+    """A part that grows and shrinks in size, sinusoidally."""
     phase = 0
     pulse_rate = 1
     pulse_amount = 0.1
@@ -203,33 +214,57 @@ class PulsingBodyPart(BodyPart):
         s = self.pulse_amount * math.cos(self.phase) + 1 - self.pulse_amount
         self.set_scale(self.scale * 0.97 + s * 0.03)
 
+
+class Wing(UpgradeablePart):
+    RESOURCES = resource_levels('wing')
+    ATTACH_CENTER = True
+
+
+class Spikes(UpgradeablePart, OutFacingPart, LeafPart):
+    RESOURCES = resource_levels('spikes')
+
+
+class Scales(UpgradeablePart, OutFacingPart, LeafPart):
+    RESOURCES = resource_levels('scales')
+
+
 class Lung(PulsingBodyPart):
     """Lungs that supply energy to connected parts"""
 
-class Heart(PulsingBodyPart):
+
+class Heart(UpgradeablePart, PulsingBodyPart):
     """Hearts heal nearby tissue"""
-    RESOURCE_NAME = 'heart-level1'
+    RESOURCES = resource_levels('heart')
     pulse_rate = 3
     pulse_amount = 0.3
 
 
-class MutagenBladder(PulsingBodyPart):
+class MutagenBladder(UpgradeablePart, PulsingBodyPart):
     """Mutagen bladders add to the monster's mutagen storage capacity."""
-    RESOURCE_NAME = 'mutagenbladder-level1'
+    RESOURCES = resource_levels('mutagenbladder')
     pulse_rate = 0.01
     pulse_amount = 0.05
 
 
-class ThistleGun(BodyPart):
-    RESOURCE_NAME = 'thistlegun-level1'
+class ThistleGun(UpgradeablePart):
+    RESOURCES = resource_levels('thistlegun')
 
 
 class EggSack(BodyPart):
-    RESOURCE_NAME = 'egg-sack'
+    RESOURCES = {
+        'default': 'egg-sack'
+    }
 
 
-class Leg(BodyPart):
-    RESOURCE_NAME = 'leg-level1'
+class Claw(UpgradeablePart):
+    RESOURCES = resource_levels('claws')
+
+    def can_attach(self, part):
+        return isinstance(part, Eyeball)
+
+
+class Leg(UpgradeablePart):
+    RESOURCES = resource_levels('leg')
 
     def update(self, dt):
         super(Leg, self).update(dt)
@@ -238,8 +273,16 @@ class Leg(BodyPart):
         self.body.apply_torque(rot * -20000)
 
 
+class Arm(BodyPart):
+    RESOURCES = {
+        'upper-arm': 'upper-arm',
+        'lower-arm': 'lower-arm'
+    }
+
+
 PART_CLASSES = {
     'head': Head,
+    'claw': Claw,
     'leg': Leg,
     'heart': Heart,
     'lung': Lung,
@@ -295,9 +338,9 @@ class Monster(object):
 
         """
         partpos = part.get_position()
-        baseshape = part._shapes[0]
-        partpos += baseshape[0]
-        partradius = baseshape[1]
+        baseshape = part.get_base_shape()
+        partpos += baseshape.center
+        partradius = baseshape.radius
         for p in self.parts:
             if not p.can_attach(part):
                 continue
@@ -352,8 +395,8 @@ class Monster(object):
         destpart, partpos, jointpos = attachment
         part.create_body(self.world)
 
-        baseshape = part._shapes[0]
-        partradius = baseshape[1]
+        baseshape = part.get_base_shape()
+        partradius = baseshape.radius
 
         partpos = jointpos + (partpos - jointpos) * initial_scale
         

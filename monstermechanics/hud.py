@@ -85,8 +85,10 @@ class PartIcon(object):
 
 IconDef = namedtuple('IconDef', 'name sprite cost')
 
+
 ICONS = [
-    IconDef('armclaw', 'sprites/icon-armclaw.png', 750),
+    IconDef('arm', 'sprites/icon-arm.png', 500),
+    IconDef('claw', 'sprites/icon-claw.png', 300),
     IconDef('leg', 'sprites/icon-leg.png', 500),
     IconDef('scales', 'sprites/icon-scales.png', 25),
     IconDef('spikes', 'sprites/icon-spikes.png', 25),
