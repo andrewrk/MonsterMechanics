@@ -18,6 +18,7 @@ COLLISION_CLASSES = [
     ('enemyarm', ['enemyarm', 'playerarm', 'playerbody', 'playerprojectile']),
     ('enemybody', ['enemybody', 'playerarm', 'playerbody', 'playerprojectile']),
     ('enemyprojectile', ['playerbody', 'playerarm', 'playerprojectile']),
+    ('neutral', [])
 ]
 
 class AbstractWorld(object):

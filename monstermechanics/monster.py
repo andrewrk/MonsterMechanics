@@ -160,6 +160,8 @@ def resource_levels(base):
 class UpgradeablePart(BodyPart):
     DEFAULT_PART = 'level1'
 
+    level = 1
+
 
 class LeafPart(BodyPart):
     """A BodyPart nothing else can attach to."""
@@ -229,6 +231,9 @@ class MutagenBladder(UpgradeablePart, PulsingBodyPart):
     RESOURCES = resource_levels('mutagenbladder')
     pulse_rate = 0.01
     pulse_amount = 0.05
+
+    def get_mutagen_capacity(self):
+        return 100 * 2 ** self.level
 
 
 class ThistleGun(UpgradeablePart):
@@ -364,6 +369,16 @@ class Monster(object):
         self.name = name
         self.leg_count = len([p for p in parts if isinstance(p, Leg)])
         self.moving = 0
+
+    def get_mutagen_capacity(self):
+        s = 1000
+        for p in self.parts:
+            try:
+                m = p.get_mutagen_capacity()
+            except AttributeError:
+                continue
+            s += m
+        return s
 
     def add_part(self, part):
         if isinstance(part, Leg):
