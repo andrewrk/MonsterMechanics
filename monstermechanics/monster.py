@@ -189,12 +189,12 @@ class ThistleGun(UpgradeablePart):
     def attack(self):
         self.attack_timer = self.ATTACK_INTERVAL
         self.attack_ready = False
-        vel = v(-20.0, 10.0)
+        vel = v(-1, 0.5) * 0.0001
         pos = self.get_position() + v(-25, 20)
         projectile = self.PROJECTILE(pos, self.name)
         self.world.spawn(projectile)
         projectile.body.apply_impulse(vel, pos)
-        self.body.apply_impulse(-vel, pos)
+        self.body.apply_impulse(-5 * vel, pos)
 
 
 
@@ -218,7 +218,7 @@ class Leg(UpgradeablePart):
         super(Leg, self).update(dt)
         #FIXME: only apply torque if the leg is touching the ground
         rot = self.body.get_rotation()
-        gain = -0.001
+        gain = -0.0005
         self.body.apply_torque(rot * gain)
 
 

@@ -95,7 +95,7 @@ class Box2DGround(AbstractBody):
 
 
 class Box2DBody(AbstractBody):
-    def __init__(self, world, circles, density=0.00001, restitution=0.1, friction=1, collision_class=None):
+    def __init__(self, world, circles, density=1, restitution=0.1, friction=1, collision_class=None):
         self.world = world
         self.circles = circles
         self.density = density
@@ -212,7 +212,7 @@ class StiffJoint(object):
 
     def update(self, dt):
         angleError = self.joint.GetJointAngle()
-        gain = 0.1
+        gain = 2
         self.joint.SetMotorSpeed(-gain * angleError)
 
     def destroy(self):
