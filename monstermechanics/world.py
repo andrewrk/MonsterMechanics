@@ -1,33 +1,35 @@
-from Box2D import *
-from Box2D import b2Vec as vec
-
-GRAVITY = vec(0, -10)
-W = 10000
-
-class Actor(object):    
-    def draw(self):
-        pass
+from .vector import v
+from .physics import get_physics
 
 
 class World(object):
-    """Combines a scenegraph and a physics engine."""
-
     def __init__(self):
         self.actors = []
-        self.setup_physics()
+        physics = get_physics()
+        self.world = physics.create_world(gravity=v(0, -500))
+        self.world.create_ground(40)
 
-    def setup_physics(self):
-        self.physics = b2World(GRAVITY, True)
-        ground = self.physics.CreateBody()
-        ground_shape = b2BoxDef(
+    def update(self, dt):
+        for a in self.actors:
+            a.update(dt)
+        self.world.update(dt)
 
-        floor = self.world.CreateBody(b2BodyDef())
-        floorbox = b2PolygonDef()
-        floorbox.SetAsBox(-W, 30, W, 0)
-        floorbox.CreateShape(floorbox)
-
-
+    def draw(self):
+        for a in self.actors:
+            a.draw()
 
     def spawn(self, actor):
-       self.actors.append(actor)
+        self.actors.append(actor)
+        actor.world = self
+        try:
+            create_body = actor.create_body
+        except AttributeError:
+            pass
+        else:
+            create_body(self.world)
 
+    def destroy(self, actor):
+        self.actors.remove(actor)
+        actor.world = None
+        if actor.body:
+            actor.body.destroy()

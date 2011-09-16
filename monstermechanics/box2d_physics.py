@@ -4,6 +4,7 @@ from Box2D import *
 from .physics import *
 from vector import v
 
+
 def make_bitmasks():
     namebits = {}
     for bit, (name, collideswith) in enumerate(COLLISION_CLASSES):
@@ -20,6 +21,8 @@ def make_bitmasks():
     return classes
 
 
+SCALE = 0.01
+
 COLLISION_CLASSES = make_bitmasks()
 
 PHYSICS_WIDTH = 5000
@@ -32,7 +35,7 @@ class Box2DPhysics(AbstractPhysics):
         bound = v(PHYSICS_WIDTH, PHYSICS_HEIGHT)
         world_bounds.lowerBound = bound * -0.5
         world_bounds.upperBound = bound * 0.5
-        return Box2DWorld(b2World(world_bounds, gravity, True))
+        return Box2DWorld(b2World(world_bounds, gravity * SCALE, True))
 
 
 class Box2DWorld(AbstractWorld):
@@ -46,7 +49,7 @@ class Box2DWorld(AbstractWorld):
     def update(self, dt):
         for c in self.update_callbacks:
             c(dt)
-        self.world.Step(dt, 20, 16)
+        self.world.Step(dt, 10, 8)
 
     def create_ground(self, y):
         ground = self.world.GetGroundBody()
@@ -54,7 +57,7 @@ class Box2DWorld(AbstractWorld):
         groundshape = b2PolygonDef()
         groundshape.filter.categoryBits = 0xffff
         groundshape.filter.maskBits = 0xffff
-        groundshape.SetAsBox(PHYSICS_WIDTH, 1000, (0, y - 1000), 0)
+        groundshape.SetAsBox(PHYSICS_WIDTH, 1000, (0, y * SCALE - 1000), 0)
         ground.CreateShape(groundshape)
         self.ground = Box2DGround(self, ground)
         return self.ground
@@ -72,16 +75,16 @@ class Box2DGround(AbstractBody):
         self.world.world.DestroyBody(self.body)
 
     def get_position(self):
-        return v(*self.body.GetPosition())
+        return v(*self.body.GetPosition()) / SCALE
 
     def set_position(self, v):
-        self.body.position = v
+        self.body.position = v * SCALE
 
     def get_rotation(self):
         return self.body.angle
 
     def local_to_world(self, point):
-        return self.body.LocalToWorld(point)
+        return self.body.LocalToWorld(point) / SCALE
 
     def destroy(self):
         if self.body is not None:
@@ -118,8 +121,8 @@ class Box2DBody(AbstractBody):
             circledef = b2CircleDef()
             circledef.filter.categoryBits = self.collision_category
             circledef.filter.maskBits = self.collision_mask
-            circledef.localPosition = centre * self.scale
-            circledef.radius = radius * self.scale
+            circledef.localPosition = centre * self.scale * SCALE
+            circledef.radius = radius * self.scale * SCALE
             circledef.density = self.density
             circledef.restitution = self.restitution
             circledef.friction = self.friction
@@ -142,10 +145,10 @@ class Box2DBody(AbstractBody):
         self.world.world.DestroyBody(self.body)
 
     def get_position(self):
-        return v(*self.body.GetPosition())
+        return v(*self.body.GetPosition()) / SCALE
 
     def set_position(self, v):
-        self.body.position = v
+        self.body.position = v * SCALE
 
     def get_rotation(self):
         return self.body.angle
@@ -154,20 +157,26 @@ class Box2DBody(AbstractBody):
         self.body.angle = radians
 
     def local_to_world(self, point):
-        return self.body.LocalToWorld(point)
+        return v(*self.body.LocalToWorld(point)) / SCALE
+
+    def set_velocity(self, vel):
+        self.body.linearVelocity = vel * SCALE
 
     def apply_force(self, force, point):
-        self.body.ApplyForce(force, point)
+        self.body.ApplyForce(force * SCALE, point * SCALE)
+
+    def apply_impulse(self, impulse, point):
+        self.body.ApplyImpulse(impulse * SCALE, point * SCALE)
 
     def apply_torque(self, torque):
         self.body.ApplyTorque(torque)
 
     def attach(self, another, anchor_point):
         joint = b2RevoluteJointDef()
-        joint.maxMotorTorque = 30000.0
+        joint.maxMotorTorque = 1
         joint.motorSpeed = 0
         joint.enableMotor = True
-        joint.Initialize(self.body, another.body, anchor_point)
+        joint.Initialize(self.body, another.body, anchor_point * SCALE)
         j = StiffJoint(self.world, joint, self, another)
         self.joints.append(j)
         another.joints.append(j)
@@ -177,7 +186,7 @@ class Box2DBody(AbstractBody):
         for j in self.joints:
             j.destroy()
         if self.body is not None:
-            self.world.DestroyBody(self.body)
+            self.world.world.DestroyBody(self.body)
             self.body = None
 
     __del__ = destroy
@@ -203,7 +212,7 @@ class StiffJoint(object):
 
     def update(self, dt):
         angleError = self.joint.GetJointAngle()
-        gain = 0.2
+        gain = 0.1
         self.joint.SetMotorSpeed(-gain * angleError)
 
     def destroy(self):

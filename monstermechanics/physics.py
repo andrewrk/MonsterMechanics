@@ -67,11 +67,17 @@ class AbstractBody(object):
         """ 
         raise NotImplementedError("AbstractPhyscs.attach()")
 
+    def set_velocity(self, vel):
+        raise NotImplementedError("AbstractPhysics.set_velocity()")
+
     def apply_force(self, force, world_point):
-        raise NotImplementedError("AbstractPhyscs.apply_force()")
+        raise NotImplementedError("AbstractPhysics.apply_force()")
+
+    def apply_impulse(self, impulse, world_point):
+        raise NotImplementedError("AbstractPhysics.apply_impulse()")
 
     def apply_torque(self, torque):
-        raise NotImplementedError("AbstractPhyscs.apply_torque()")
+        raise NotImplementedError("AbstractPhysics.apply_torque()")
 
     def destroy(self):
         """Destroy the body and all joints."""

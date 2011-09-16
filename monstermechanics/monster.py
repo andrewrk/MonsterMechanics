@@ -4,8 +4,11 @@ import math
 import pyglet
 import json
 
-from vector import v
+from actor import Actor
 from geom import Circle
+from vector import v
+
+from projectiles import Thistle
 
 STYLE_NORMAL = 0
 STYLE_VALID = 1
@@ -15,7 +18,9 @@ LEFT = -1
 RIGHT = 1
 
 
-class BodyPart(object):
+
+
+class BodyPart(Actor):
     """Base class of all body parts.
     
     Parts support tangible physics, but are created in a ghost mode that shows
@@ -31,53 +36,7 @@ class BodyPart(object):
     ATTACH_CENTER = False
     DEFAULT_PART = 'default'
     type = 'body'
-
-    @classmethod
-    def load(cls):
-        if hasattr(cls, 'resources') or not hasattr(cls, 'RESOURCES'):
-            return
-        cls.resources = {}
-        for name, resource_file in cls.RESOURCES.items():
-            with pyglet.resource.file('components/%s.json' % resource_file) as f:
-                definition = json.loads(f.read())
-
-            # load the associated image
-            img = pyglet.resource.image(definition['name'])
-            # <mauve> [offset is] the amount you have to translate the image
-            # <mauve> So -1 * the position of the centre in the image
-            # also we have to flip the y axis because this is pyglet
-            img.anchor_x = -definition['offset'][0]
-            img.anchor_y = img.height + definition['offset'][1]
-            definition['img'] = img
-
-            offset = v(definition['offset'])
-            circles = [Circle(v(0, 0), definition['radius'])]
-            for p in definition.get('points', []):
-                centre = v(p['offset']) + offset
-                circles.append(Circle(v(centre.x, -centre.y), p['radius']))
-            definition['shapes'] = circles 
-
-            # cache it
-            cls.resources[name] = definition
-    
-    def set_default_part(self):
-        self.set_part(self.DEFAULT_PART)
-
-    def set_part(self, name):
-        try:
-            self.part = self.resources[name]
-        except KeyError:
-            cls.load()
-            self.part = self.resources[name]
-
-        self.sprite = pyglet.sprite.Sprite(self.part['img'])
-
-    def __init__(self, pos):
-        self.sprite = None
-        self.set_default_part()
-        self.body = None
-        self.scale = 1.0
-        self.set_position(pos)
+    attack_ready = False
 
     def subparts(self):
         """In nested bodies, return sub-bodies."""
@@ -98,47 +57,13 @@ class BodyPart(object):
             self.sprite.color = (255, 255, 255)
             self.sprite.opacity = 255
     
-    def set_position(self, pos):
-        """Move the part."""
-        if self.body:
-            self.body.set_position(pos)
-        else:
-            self.sprite.position = pos
-
     def get_base_shape(self):
         return self.get_shapes()[0]
-
-    def get_shapes(self):
-        """Return the physics volumes in the shape."""
-        return [Circle(c * self.scale, r * self.scale) for c, r in self.part['shapes']]
-
-    def get_position(self):
-        if self.body:
-            return self.body.get_position()
-        else:
-            return v(*self.sprite.position)
-
-    def create_body(self, world, name):
-        """Create the physics body for the part"""
-        self.body = world.create_body(self.get_shapes(), collision_class=name + self.type)
-        self.body.set_position(v(*self.sprite.position))
-
-    def set_scale(self, scale):
-        self.scale = scale
-        self.sprite.scale = self.scale
-        self.body.set_scale(self.scale)
 
     def update(self, dt):
         if self.scale < 1.0:
             newscale = min(1.0, self.scale + dt / 3.0)
             self.set_scale(newscale)
-
-    def draw(self):
-        "update self and children's sprites to correct angle and position"
-        if self.body:
-            self.sprite.set_position(*self.body.get_position())
-            self.sprite.rotation = -180 / math.pi * self.body.get_rotation()
-        self.sprite.draw()
 
     def can_attach(self, another):
         """Return True if another can be permitted to attach to this part"""
@@ -217,6 +142,10 @@ class Scales(UpgradeablePart, OutFacingPart, LeafPart):
 
 class Lung(PulsingBodyPart):
     """Lungs that supply energy to connected parts"""
+    RESOURCES = {
+        'lung': 'lung'
+    }
+    DEFAULT_PART = 'lung'
 
 
 class Heart(UpgradeablePart, PulsingBodyPart):
@@ -238,6 +167,35 @@ class MutagenBladder(UpgradeablePart, PulsingBodyPart):
 
 class ThistleGun(UpgradeablePart):
     RESOURCES = resource_levels('thistlegun')
+    ATTACK_INTERVAL = 2
+    attack_ready = True
+    attack_timer = 0
+
+    PROJECTILE = Thistle
+
+    def update(self, dt):
+        super(ThistleGun, self).update(dt)
+        if self.attack_timer > 0:
+            self.attack_timer = max(0, self.attack_timer - dt) 
+        else:
+            self.attack_ready = True
+
+    def draw(self):
+        """Don't rotate the thistlegun as we want it to always fire in the same direction."""
+        if self.body:
+            self.sprite.set_position(*self.body.get_position())
+        self.sprite.draw()
+
+    def attack(self):
+        self.attack_timer = self.ATTACK_INTERVAL
+        self.attack_ready = False
+        vel = v(-20.0, 10.0)
+        pos = self.get_position() + v(-25, 20)
+        projectile = self.PROJECTILE(pos, self.name)
+        self.world.spawn(projectile)
+        projectile.body.apply_impulse(vel, pos)
+        self.body.apply_impulse(-vel, pos)
+
 
 
 class EggSack(BodyPart):
@@ -260,7 +218,8 @@ class Leg(UpgradeablePart):
         super(Leg, self).update(dt)
         #FIXME: only apply torque if the leg is touching the ground
         rot = self.body.get_rotation()
-        self.body.apply_torque(rot * -20000)
+        gain = -0.001
+        self.body.apply_torque(rot * gain)
 
 
 class LowerArm(BodyPart):
@@ -295,9 +254,9 @@ class Arm(BodyPart):
     def subparts(self):
         return [self.upper, self.lower]
 
-    def __init__(self, pos):
-        self.upper = UpperArm(pos)
-        self.lower = LowerArm(pos + self.upper.get_shapes()[1].center)
+    def __init__(self, pos, name='player'):
+        self.upper = UpperArm(pos, name=name)
+        self.lower = LowerArm(pos + self.upper.get_shapes()[1].center, name=name)
 
     def set_scale(self, scale):
         self.upper.set_scale(scale)
@@ -307,9 +266,9 @@ class Arm(BodyPart):
         self.upper.set_style(style)
         self.lower.set_style(style)
 
-    def create_body(self, world, name):
-        self.upper.create_body(world, name)
-        self.lower.create_body(world, name)
+    def create_body(self, world):
+        self.upper.create_body(world)
+        self.lower.create_body(world)
         self.joint = self.upper.body.attach(self.lower.body, self.lower.get_position())
 
     def get_shapes(self):
@@ -355,12 +314,13 @@ class Monster(object):
     def load_all():
         for cls in PART_CLASSES.values():
             cls.load() 
+        Thistle.load()
 
     @classmethod
     def create_initial(cls, world, pos, name='player'):
         Monster.load_all()
-        head = Head(pos)
-        head.create_body(world, name)
+        head = Head(pos, name=name)
+        world.spawn(head)
         return cls(world, [head])
 
     def __init__(self, world, parts, name='player'):
@@ -380,6 +340,11 @@ class Monster(object):
             s += m
         return s
 
+    def attack(self):
+        for p in self.parts:
+            if p.attack_ready:
+                p.attack()
+
     def add_part(self, part):
         if isinstance(part, Leg):
             self.leg_count += 1
@@ -392,10 +357,6 @@ class Monster(object):
         part.body.destroy()
         if isinstance(part, Leg):
             self.leg_count -= 1
-
-    def draw(self):
-        for p in self.parts:
-            p.draw()
 
     def attachment_point(self, part):
         """Find an attachment point for part to any of the parts in this monster.
@@ -449,7 +410,7 @@ class Monster(object):
         destpart, partpos, jointpos = attachment
         part.set_position(partpos)
         part.position_to_joint(partpos - jointpos)
-        part.create_body(self.world, self.name)
+        self.world.spawn(part)
         part.set_style(STYLE_NORMAL)
         self.add_part(part)
         destpart.body.attach(part.body, jointpos)
@@ -460,13 +421,13 @@ class Monster(object):
             raise ValueError("Cannot attach part to this monster.")
 
         destpart, partpos, jointpos = attachment
-        part.create_body(self.world, self.name)
 
         baseshape = part.get_base_shape()
         partradius = baseshape.radius
 
         partpos = jointpos + (partpos - jointpos) * initial_scale
         
+        self.world.spawn(part)
         part.set_scale(initial_scale)
         part.set_position(partpos)
         part.position_to_joint(partpos - jointpos)

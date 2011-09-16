@@ -9,6 +9,7 @@ from .physics import get_physics
 from .hud import Shelf
 from .monster import Monster, LEFT, RIGHT
 from .background import Background
+from .world import World
 
 import math
 
@@ -28,6 +29,7 @@ class Control:
     Rotate4 = 7
     Rotate5 = 8
     Rotate6 = 9
+    Attack = 10
 
 
 class Game(object):
@@ -42,6 +44,7 @@ class Game(object):
             key.RIGHT: Control.MoveRight,
             key.UP: Control.MoveUp,
             key.DOWN: Control.MoveDown,
+            key.SPACE: Control.Attack,
 
             key._1: Control.Rotate1,
             key._2: Control.Rotate2,
@@ -53,6 +56,7 @@ class Game(object):
 
         self.control_state = [False] * (len(dir(Control)) - 2)
         self.scroll = v(0,0)
+
 
 
     def buildMonster(self):
@@ -87,6 +91,9 @@ class Game(object):
         else:
             self.monster.moving = 0
 
+        if self.control_state[Control.Attack]:
+            self.monster.attack()
+
         self.monster.update(dt)
         self.world.update(dt)
         self.hud.update(dt)
@@ -94,7 +101,7 @@ class Game(object):
     def on_draw(self):
         self.window.clear()
         self.background.draw()
-        self.monster.draw()
+        self.world.draw()
 
         # hud
         gl.glLoadIdentity()
@@ -108,10 +115,7 @@ class Game(object):
         Background.load()
         self.background = Background(self.window)
 
-        #self.buildMonster()
-        physics = get_physics()
-        self.world = physics.create_world(gravity=v(0, -500))
-        self.world.create_ground(40)
+        self.world = World()
         self.monster = Monster.create_initial(self.world, v(400, 80))
 
         Shelf.load()
