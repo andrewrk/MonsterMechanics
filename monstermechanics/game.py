@@ -56,27 +56,8 @@ class Game(object):
 
         self.control_state = [False] * (len(dir(Control)) - 2)
         self.scroll = v(0,0)
+        self.filename = None
 
-
-
-    def buildMonster(self):
-        head = self.makeBodyPart('head-level1')
-        leg = self.makeBodyPart('leg-level1')
-        leg.rotation = math.pi /2
-        claw = self.makeBodyPart('claws-level1')
-
-        head.attach_part(leg, 50, math.pi * 3 / 2)
-        leg.attach_part(claw, 120, math.pi * 3 / 2)
-
-        self.monster = Monster(head)
-        self.monster.pos = v(200, 300)
-
-        self.monster.cacheBoundingBox()
-        img = pyglet.resource.image('debugbox.png')
-        self.test = [pyglet.sprite.Sprite(img, batch=self.batch_level) for x in range(4)]
-
-        self.leg = leg
-        self.claw = claw
 
     def getNextGroupNum(self):
         val = self.next_group_num
@@ -110,13 +91,17 @@ class Game(object):
             self.fps_display.draw()
         
     def start(self):
+        Monster.load_all()
         self.window = pyglet.window.Window(width=self.size.x, height=self.size.y, caption=name)
 
         Background.load()
         self.background = Background(self.window)
 
         self.world = World()
-        self.monster = Monster.create_initial(self.world, v(400, 80))
+        if self.filename is not None:
+            self.monster = Monster.from_json(self.world, self.filename)
+        else:
+            self.monster = Monster.create_initial(self.world, v(400, 80))
 
         Shelf.load()
         self.hud = Shelf(self.world, self.monster)
@@ -136,11 +121,24 @@ class Game(object):
 
         pyglet.app.run()
 
+    def save(self):
+        import json
+        import datetime
+        import pprint
+        from .screenshot import take_screenshot
+        fname = datetime.datetime.now().strftime('mutants/mutant-%Y-%m-%d_%H:%M:%S.%f')
+        take_screenshot(self.window, filename=fname + '.jpg')
+        pprint.pprint(self.monster.to_json())
+        with open(fname + '.json', 'w') as f:
+            f.write(json.dumps(self.monster.to_json()))
+
     def on_key_press(self, symbol, modifiers):
         if symbol == key.F12: 
             from .screenshot import take_screenshot
             take_screenshot(self.window)
             return
+        elif symbol == key.F2: 
+            self.save()
         try:
             control = self.controls[symbol]
             self.control_state[control] = True

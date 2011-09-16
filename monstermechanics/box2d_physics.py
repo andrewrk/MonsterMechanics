@@ -3,6 +3,7 @@
 from Box2D import *
 from .physics import *
 from vector import v
+import math
 
 
 def make_bitmasks():
@@ -172,15 +173,34 @@ class Box2DBody(AbstractBody):
         self.body.ApplyTorque(torque)
 
     def attach(self, another, anchor_point):
+        localanchor1 = anchor_point * SCALE - v(*self.body.GetPosition())
+        localanchor2 = anchor_point * SCALE - v(*another.body.GetPosition())
+        localanchor1 = localanchor1.rotated(-self.body.angle / math.pi * 180)
+        localanchor2 = localanchor2.rotated(-another.body.angle / math.pi * 180)
+        return self._create_joint(another, localanchor1, localanchor2, angle=0)
+
+    def restore_joint(self, another, js):
+        return self._create_joint(another, v(*js['anchor1']) * SCALE, v(*js['anchor2']) * SCALE, js['angle'], js['refAngle'])
+
+    def _create_joint(self, another, localanchor1, localanchor2, angle, refangle=None):
         joint = b2RevoluteJointDef()
         joint.maxMotorTorque = 1
         joint.motorSpeed = 0
         joint.enableMotor = True
-        joint.Initialize(self.body, another.body, anchor_point * SCALE)
+        joint.body1 = self.body
+        joint.body2 = another.body
+        joint.localAnchor1 = localanchor1
+        joint.localAnchor2 = localanchor2
+        if refangle is None:
+            joint.referenceAngle = another.body.angle - self.body.angle
+        else:
+            joint.referenceAngle = refangle
         j = StiffJoint(self.world, joint, self, another)
+        print j.to_json()
         self.joints.append(j)
         another.joints.append(j)
         self.world.add_update_callback(j.update)
+        return j
 
     def destroy(self):
         for j in self.joints:
@@ -221,5 +241,13 @@ class StiffJoint(object):
             self.body1.joints.remove(self)
             self.body2.joints.remove(self)
         self.joint = None
+
+    def to_json(self):
+        return {
+            'anchor1': tuple(self.jointdef.localAnchor1 / SCALE),
+            'anchor2': tuple(self.jointdef.localAnchor2 / SCALE),
+            'angle': self.joint.GetJointAngle(),
+            'refAngle': self.jointdef.referenceAngle
+        }
 
     __del__ = destroy

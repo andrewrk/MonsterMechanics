@@ -38,6 +38,11 @@ class BodyPart(Actor):
     type = 'body'
     attack_ready = False
 
+    def __repr__(self):
+        return '<%s %d>' % (self.__class__.__name__, id(self))
+
+    __str__ = __repr__
+
     def subparts(self):
         """In nested bodies, return sub-bodies."""
         return [self]
@@ -72,6 +77,19 @@ class BodyPart(Actor):
     def attachment_radius(self, another):
         return None
 
+    def to_json(self):
+        return {
+            'id': id(self),
+            'type': self.__class__.__name__,
+            'position': tuple(self.get_position()),
+            'angle': self.body.get_rotation(),
+            'scale': self.scale
+        }
+
+    @classmethod
+    def from_json(cls, js, name='player'):
+        inst = cls(v(*js['position']), name=name)
+        return inst
 
 
 def resource_levels(base):
@@ -168,9 +186,20 @@ class MutagenBladder(UpgradeablePart, PulsingBodyPart):
 class ThistleGun(UpgradeablePart):
     RESOURCES = resource_levels('thistlegun')
     ATTACK_INTERVAL = 2
+
+    MUZZLE = {
+        'left': v(-25, 20),
+        'right': v(25, 20),
+    }
+    MUZZLE_IMPULSE = {
+        'left': v(-1, 0.5) * 0.0001,
+        'right': v(1, 0.5) * 0.0001,
+    }
+
+    dir = 'left'
     attack_ready = True
     attack_timer = 0
-
+    
     PROJECTILE = Thistle
 
     def update(self, dt):
@@ -189,8 +218,8 @@ class ThistleGun(UpgradeablePart):
     def attack(self):
         self.attack_timer = self.ATTACK_INTERVAL
         self.attack_ready = False
-        vel = v(-1, 0.5) * 0.0001
-        pos = self.get_position() + v(-25, 20)
+        vel = self.MUZZLE_IMPULSE[self.dir]
+        pos = self.get_position() + self.MUZZLE[self.dir]
         projectile = self.PROJECTILE(pos, self.name)
         self.world.spawn(projectile)
         projectile.body.apply_impulse(vel, pos)
@@ -318,16 +347,15 @@ class Monster(object):
 
     @classmethod
     def create_initial(cls, world, pos, name='player'):
-        Monster.load_all()
         head = Head(pos, name=name)
         world.spawn(head)
-        return cls(world, [head])
+        return cls(world, [head], name=name)
 
     def __init__(self, world, parts, name='player'):
         self.world = world
         self.parts = parts
         self.name = name
-        self.leg_count = len([p for p in parts if isinstance(p, Leg)])
+        self.leg_count = len([p for p in self.parts if isinstance(p, Leg)])
         self.moving = 0
 
     def get_mutagen_capacity(self):
@@ -413,7 +441,7 @@ class Monster(object):
         self.world.spawn(part)
         part.set_style(STYLE_NORMAL)
         self.add_part(part)
-        destpart.body.attach(part.body, jointpos)
+        self.do_attach(destpart, part, jointpos)
 
     def attach_and_grow(self, part, initial_scale=0.1):
         attachment = self.attachment_point(part)
@@ -433,4 +461,51 @@ class Monster(object):
         part.position_to_joint(partpos - jointpos)
         part.set_style(STYLE_NORMAL)
         self.add_part(part)
-        destpart.body.attach(part.body, jointpos)
+        self.do_attach(destpart, part, jointpos)
+
+    def do_attach(self, target, part, jointpos):
+        assert part is not target
+        j = target.body.attach(part.body, jointpos)
+        target._joints.append((part, j))
+
+    def to_json(self):
+        parts = []
+        joints = []
+
+        for p in self.parts:
+            parts.append(p.to_json())
+            for p2, j in p._joints:
+                d = j.to_json()
+                d['body1'] = id(p) 
+                d['body2'] = id(p2)
+                joints.append(d)
+
+        return {
+            'parts': parts,
+            'joints': joints
+        }
+
+    @staticmethod
+    def from_json(world, fname, name='player'):
+        with open(fname, 'r') as f:
+            mutant = json.load(f)
+
+        classes = {}
+        for n, cls in PART_CLASSES.items():
+            classes[cls.__name__] = cls
+
+        part_map = {}
+        parts = []
+        for p in mutant['parts']:
+            cls = classes[p['type']]
+            part = cls.from_json(p, name)
+            parts.append(part)
+            part_map[p['id']] = part
+            world.spawn(part)
+
+        # re-attach parts with joints
+        for j in mutant['joints']:
+            body1 = part_map[j['body1']]
+            body2 = part_map[j['body2']]
+            body1._joints.append((body2, body1.body.restore_joint(body2.body, j)))
+        return Monster(world, parts, name=name)

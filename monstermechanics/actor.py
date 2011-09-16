@@ -45,6 +45,7 @@ class Actor(object):
         self.body = None
         self.scale = 1.0
         self.set_position(pos)
+        self._joints = []
 
     def set_default_part(self):
         self.set_part(self.DEFAULT_PART)

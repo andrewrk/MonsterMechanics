@@ -13,8 +13,10 @@ def screenshot_path():
     return datetime.datetime.now().strftime('screenshot_%Y-%m-%d_%H:%M:%S.%f.png')
 
 
-def take_screenshot(window):
+def take_screenshot(window, filename=None):
+    if filename is None:
+        filename = screenshot_path()
     gl.glPixelTransferf(gl.GL_ALPHA_BIAS, 1.0)  # don't transfer alpha channel
     image = pyglet.image.ColorBufferImage(0, 0, window.width, window.height)
-    image.save(screenshot_path())
+    image.save(filename)
     gl.glPixelTransferf(gl.GL_ALPHA_BIAS, 0.0)  # restore alpha channel transfer

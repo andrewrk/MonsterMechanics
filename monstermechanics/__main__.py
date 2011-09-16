@@ -2,6 +2,7 @@ from __future__ import division, print_function, unicode_literals; range = xrang
 
 import pyglet
 
+import sys
 import os
 from game import Game
 
@@ -22,4 +23,6 @@ setUpResources()
 
 def main():
     game = Game()
+    if len(sys.argv) > 1:
+        game.filename = sys.argv[1]
     game.start()
