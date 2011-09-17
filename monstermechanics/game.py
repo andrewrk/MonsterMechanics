@@ -6,6 +6,7 @@ from pyglet import gl
 from vector import v
 from .physics import get_physics
 
+from .camera import Camera
 from .hud import Shelf
 from .monster import Monster, LEFT, RIGHT
 from .background import Background
@@ -58,6 +59,7 @@ class Game(object):
         self.scroll = v(0,0)
         self.filename = None
         self.enemy = None
+        self.camera = None
 
 
     def getNextGroupNum(self):
@@ -79,14 +81,16 @@ class Game(object):
         self.monster.update(dt)
         self.world.update(dt)
         self.hud.update(dt)
+        self.camera.track_bounds(self.monster.get_bounds())
+        self.camera.update(dt)
 
     def on_draw(self):
         self.window.clear()
+        self.camera.set_matrix()
         self.background.draw()
         self.world.draw()
 
         # hud
-        gl.glLoadIdentity()
         self.hud.draw()
         if self.show_fps:
             self.fps_display.draw()
@@ -94,6 +98,7 @@ class Game(object):
     def start(self):
         Monster.load_all()
         self.window = pyglet.window.Window(width=self.size.x, height=self.size.y, caption=name)
+        self.camera = Camera(v(self.size.x, self.size.y) * 0.5, self.size.x, self.size.y)
 
         Background.load()
         self.background = Background(self.window)

@@ -51,21 +51,24 @@ class Background(object):
         if far_bgpos.y + self.sprite_bg2_left.height < self.window.height:
             far_bgpos.y = self.window.height - self.sprite_bg2_left.height
         far_bgpos = v(int(far_bgpos.x), int(far_bgpos.y))
-        gl.glLoadIdentity()
+        gl.glPushMatrix()
         gl.glTranslatef(far_bgpos.x, far_bgpos.y, 0.0)
         self.batch_bg2.draw()
+        gl.glPopMatrix()
 
         # close bg
         close_bgpos = v(-((self.scroll.x * 0.5) % self.sprite_bg_left.width), -(self.scroll.y * 0.20))
         if close_bgpos.y > 0:
             close_bgpos.y = 0
         close_bgpos = v(int(far_bgpos.x), int(far_bgpos.y))
-        gl.glLoadIdentity()
+        gl.glPushMatrix()
         gl.glTranslatef(close_bgpos.x, close_bgpos.y, 0.0)
         self.batch_bg1.draw()
+        gl.glPopMatrix()
 
         # level
         floored_scroll = -v(int(self.scroll.x), int(self.scroll.y))
-        gl.glLoadIdentity()
+        gl.glPushMatrix()
         gl.glTranslatef(floored_scroll.x, floored_scroll.y, 0.0)
         self.batch_level.draw()
+        gl.glPopMatrix()

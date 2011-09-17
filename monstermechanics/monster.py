@@ -91,6 +91,21 @@ class BodyPart(Actor):
         inst = cls(v(*js['position']), name=name)
         return inst
 
+    def get_bounds(self):
+        ang = self.sprite.rotation * math.pi / 180
+        bounds = None
+        basepos = v(*self.sprite.position)
+        for s in self.get_shapes():
+            center = v(*s.center)
+            center = center.rotated(ang) + basepos
+            diag = v(-s.radius, s.radius)
+            sbounds = Rect(center + diag, center - diag)
+            if bounds is None:
+                bounds = sbounds
+            else:
+                bounds = bounds.union(sbounds)
+        return bounds
+
 
 def resource_levels(base):
     return {
@@ -358,6 +373,15 @@ class Monster(object):
         self.leg_count = len([p for p in self.parts if isinstance(p, Leg)])
         self.moving = 0
 
+    def get_bounds(self):
+        bounds = None
+        for p in self.parts:
+            if bounds is None:
+                bounds = p.get_bounds()
+            else:
+                bounds = bounds.union(p.get_bounds())
+        return bounds
+
     def get_mutagen_capacity(self):
         s = 1000
         for p in self.parts:
@@ -534,7 +558,7 @@ class Monster(object):
             j['anchor1'] = refl(j['anchor1'])
             j['anchor2'] = refl(j['anchor2'])
             j['angle'] = rot(j['angle']) 
-            j['refAngle'] = rot(j['refAngle']) 
+            j['refAngle'] = -j['refAngle']
 
         return Monster.from_json(world, mutant, 'enemy')
 
