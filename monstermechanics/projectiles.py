@@ -43,6 +43,5 @@ class Thistle(Actor):
         for f in friends:
             f.add_mutagen(damage * 1.5 / len(friends))
 
-        print "hit", part, part.health
         self.world.destroy(self)
 

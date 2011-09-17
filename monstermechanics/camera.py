@@ -24,13 +24,11 @@ class Camera(object):
     def update(self, dt):
         self.scale = self.target_scale + (self.scale - self.target_scale) * 0.2 ** dt
         self.center = self.target + (self.center - self.target) * 0.2 ** dt
-        if self.center.y > self.viewport_height * 0.5 / self.scale:
-            self.center = v(self.center.x, self.viewport_height * 0.5 / self.scale)
+        hlimit = self.viewport_height * 0.5 / self.scale
+        self.center = v(self.center.x, hlimit)
 
     def screen_to_world(self, s):
-        s += self.center - self.viewport_offset
-        s /= self.scale
-        return s
+        return self.center + (s - self.viewport_offset) / self.scale
 
     def set_matrix(self):
         gl.glLoadIdentity()
