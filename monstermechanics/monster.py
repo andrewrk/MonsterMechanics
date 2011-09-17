@@ -4,11 +4,13 @@ import math
 import pyglet
 import json
 
+import random
+
 from actor import Actor
 from geom import *
 from vector import v
 
-from projectiles import Thistle
+from projectiles import Thistle, Blood
 from .controller import AIController
 
 STYLE_NORMAL = 0
@@ -142,6 +144,11 @@ class BodyPart(Actor):
             p.kill()
         if self._parent is not None:
             self._parent._joints = [(p, j) for p, j in self._parent._joints if p is not self]
+
+        for p, radius in self.get_shapes():
+            for i in range(int(radius * radius / 100.0)):
+                off = v(random.gauss(0, radius * 0.5), random.gauss(0, radius * 0.5))
+                self.world.spawn(Blood(self.get_position() + p + off, name=''))
 
         self.world.destroy(self)
         self.monster.remove_part(self)
@@ -476,6 +483,7 @@ class Monster(object):
         for cls in PART_CLASSES.values():
             cls.load() 
         Thistle.load()
+        Blood.load()
 
     @classmethod
     def create_initial(cls, world, pos, name='player'):
