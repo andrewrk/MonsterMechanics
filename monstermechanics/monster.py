@@ -40,6 +40,7 @@ class BodyPart(Actor):
     DEFAULT_PART = 'default'
     type = 'body'
     attack_ready = False
+    cost = 200
 
     def __repr__(self):
         return '<%s %d>' % (self.__class__.__name__, id(self))
@@ -511,7 +512,10 @@ class Monster(object):
         self.mutagen = value
 
     def get_position(self):
-        return self.parts[0].get_position()
+        try:
+            return self.parts[0].get_position()
+        except IndexError:
+            return v(0,0) # FIXME
 
     def add_mutagen(self, value):
         cap = self.get_mutagen_capacity()

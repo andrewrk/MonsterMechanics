@@ -95,15 +95,15 @@ IconDef = namedtuple('IconDef', 'name sprite cost')
 ICONS = [
     #IconDef('arm', 'sprites/icon-arm.png', 500),
     #IconDef('claw', 'sprites/icon-claw.png', 300),
-    IconDef('leg', 'sprites/icon-leg.png', 500),
+    IconDef('thistlegun', 'sprites/icon-thistlegun.png', 250),
     IconDef('scales', 'sprites/icon-scales.png', 25),
     IconDef('spikes', 'sprites/icon-spikes.png', 25),
+    IconDef('leg', 'sprites/icon-leg.png', 500),
     IconDef('heart', 'sprites/icon-heart.png', 125),
     IconDef('lung', 'sprites/icon-lung.png', 200),
+    IconDef('mutagenbladder', 'sprites/icon-mutagenbladder.png', 75),
     IconDef('wing', 'sprites/icon-wing.png', 75),
     IconDef('eyeball', 'sprites/icon-eyeball.png', 5),
-    IconDef('thistlegun', 'sprites/icon-thistlegun.png', 250),
-    IconDef('mutagenbladder', 'sprites/icon-mutagenbladder.png', 75),
 ]
 
 

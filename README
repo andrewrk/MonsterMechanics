@@ -4,8 +4,8 @@ Monster Mechanics
 Entry in PyWeek #13  <http://www.pyweek.org/13/>
 URL: http://pyweek.org/e/psd/
 Team: Perceptibly Sideways
-Members: superjoe, mauve
-License: WTFPL <http://sam.zoy.org/wtfpl/>
+Members: mauve - early help from superjoe
+License: GPL3 <
 
 
 Running the Game
@@ -20,6 +20,28 @@ Othewise open a terminal / console and "cd" to the game directory and run:
 
 How to Play the Game
 --------------------
+
+Drag parts onto your monster in order to attach them. You have to pay for this in Mutagen. Mutagen is won by killing enemies.
+
+The parts are:
+
+ * Thistle Gun - fires thistles that do damage.
+ * Scales - armour
+ * Spikes - these do damage if you can get close enough
+ * Legs - for standing on
+ * Heart - heals your components. The healing spreads through your creature. This is cumulative with more lungs.
+ * Lungs - every component they are attached to performs better. This is cumulative with more lungs.
+ * Mutagen Bladder - adding these raises your maximum mutagen
+ * Wings - for decoration. (ran out of time)
+ * Eyeball - for decoration. (ran out of time)
+
+You die if your head dies. Hovering parts will show their current health.
+
+You can also upgrade parts - click on a part when its health bar is showing, then click upgrade.
+
+You can also take control your monster with left and right arrow keys, and
+space bar to attack. Pressing nothing will cause your monster to resume
+fighting automatically.
 
 
 Development notes 
