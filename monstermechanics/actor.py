@@ -51,10 +51,14 @@ class Actor(object):
         self.set_part(self.DEFAULT_PART)
 
     def set_part(self, name):
+        if self.name == 'enemy':
+            qname = 'enemy-' + name
+        else:
+            qname = name
         try:
-            self.part = self.resources[name]
+            self.part = self.resources[qname]
         except KeyError:
-            cls.load()
+            self.load()
             self.part = self.resources[name]
 
         self.sprite = pyglet.sprite.Sprite(self.part['img'])

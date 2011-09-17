@@ -129,6 +129,7 @@ class Game(object):
 
         self.world = World()
         self.monster = Monster.create_initial(self.world, v(400, 80))
+        self.monster.add_death_listener(self.show_game_over)
         self.world.add_monster(self.monster)
 
         if self.filename is not None:
@@ -158,6 +159,9 @@ class Game(object):
         pyglet.app.run()
 
     loaded_images = {}
+
+    def show_game_over(self, monster):
+        self.show_message('game-over')
 
     def show_message(self, fname, duration=None):
         x = self.size.x / 2

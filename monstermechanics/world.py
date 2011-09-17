@@ -40,6 +40,8 @@ class World(object):
         return [m for m in self.monsters if m.name != name]
 
     def update(self, dt):
+        for m in self.monsters:
+            m.update(dt)
         for a in self.actors:
             a.update(dt)
         self.world.update(dt)

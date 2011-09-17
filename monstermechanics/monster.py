@@ -9,6 +9,7 @@ from geom import *
 from vector import v
 
 from projectiles import Thistle
+from .controller import AIController
 
 STYLE_NORMAL = 0
 STYLE_VALID = 1
@@ -154,6 +155,15 @@ def resource_levels(base):
         'level1': '%s-level1' % base,
         'level2': '%s-level2' % base,
         'level3': '%s-level3' % base,
+        'enemy-level1': 'enemy-%s-level1' % base,
+        'enemy-level2': 'enemy-%s-level2' % base,
+        'enemy-level3': 'enemy-%s-level3' % base,
+    }
+
+def single_resource(name):
+    return {
+        'default': name,
+        'enemy-default': 'enemy-' + name
     }
     
 
@@ -184,9 +194,7 @@ class Head(UpgradeablePart):
 
 class Eyeball(LeafPart):
     """An eyeball. Improves accuracy."""
-    RESOURCES = {
-        'default': 'eyeball',
-    }
+    RESOURCES = single_resource('eyeball')
     DEFAULT_SPRITE = 'default'
 
     MAX_HEALTH = 30
@@ -234,10 +242,8 @@ class Scales(UpgradeablePart, OutFacingPart, LeafPart):
 
 class Lung(PulsingBodyPart):
     """Lungs that supply energy to connected parts"""
-    RESOURCES = {
-        'lung': 'lung'
-    }
-    DEFAULT_PART = 'lung'
+    RESOURCES = single_resource('lung')
+    DEFAULT_PART = 'default'
     MAX_HEALTH = 300
 
 
@@ -282,12 +288,17 @@ class ThistleGun(UpgradeablePart):
         'right': v(1, 0.2) * 0.0001,
     }
 
-    dir = 'left'
     attack_ready = True
     attack_timer = 0
     
     PROJECTILE = Thistle
     MAX_HEALTH = 100, 200, 300
+
+    def get_dir(self):
+        return {
+            'player': 'left',
+            'enemy': 'right'
+        }[self.name]
 
     def update(self, dt):
         super(ThistleGun, self).update(dt)
@@ -305,8 +316,9 @@ class ThistleGun(UpgradeablePart):
     def attack(self):
         self.attack_timer = self.ATTACK_INTERVAL
         self.attack_ready = False
-        vel = self.MUZZLE_IMPULSE[self.dir]
-        pos = self.get_position() + self.MUZZLE[self.dir]
+        dir = self.get_dir()
+        vel = self.MUZZLE_IMPULSE[dir]
+        pos = self.get_position() + self.MUZZLE[dir]
         projectile = self.PROJECTILE(pos, self.name)
         self.world.spawn(projectile)
         projectile.body.apply_impulse(vel, pos)
@@ -337,15 +349,11 @@ class Leg(UpgradeablePart):
 
 class LowerArm(BodyPart):
     type = 'arm'
-    RESOURCES = {
-        'default': 'lower-arm'
-    }
+    RESOURCES = single_resource('lower-arm')
 
 class UpperArm(BodyPart):
     type = 'arm'
-    RESOURCES = {
-        'default': 'upper-arm'
-    }
+    RESOURCES = single_resource('upper-arm')
 
 
 class Arm(BodyPart):
@@ -446,6 +454,11 @@ class Monster(object):
         self.moving = 0
         self.mutagen = 500
         self.death_listeners = []
+        self.controller = None
+        self.dead = False
+
+    def set_controller(self, controller):
+        self.controller = controller
 
     def set_mutagen(self, value):
         self.mutagen = value
@@ -475,6 +488,12 @@ class Monster(object):
                 continue
             s += m
         return s
+
+    def left(self):
+        self.moving = LEFT
+
+    def right(self):
+        self.moving = RIGHT
 
     def attack(self):
         for p in self.parts:
@@ -554,8 +573,8 @@ class Monster(object):
     phase = 0
 
     def update(self, dt):
-        for p in self.parts:
-            p.update(dt)
+        if self.controller:
+            self.controller.update(dt)
         if self.moving in [LEFT, RIGHT]:
             self.phase += self.moving * dt * 6
             for p in self.parts:
@@ -567,6 +586,7 @@ class Monster(object):
                 p.set_position(ppos + v(self.moving * 200 * f * dt, 10 * f * dt))
                 rot = p.body.get_rotation()
                 p.body.set_rotation(rot + self.moving * step * dt) 
+        self.moving = 0
 
     def attach(self, part):
         attachment = self.attachment_point(part)
@@ -628,6 +648,7 @@ class Monster(object):
         self.death_listeners.append(l)
     
     def kill(self):
+        self.dead = True
         self.world.remove_monster(self)
         for l in self.death_listeners:
             l(self)
@@ -684,6 +705,6 @@ class Monster(object):
             j['angle'] = rot(j['angle']) 
             j['refAngle'] = -j['refAngle']
 
-        return Monster.from_json(world, mutant, 'enemy')
-
-        
+        m = Monster.from_json(world, mutant, 'enemy')
+        m.set_controller(AIController(world, m, 'enemy'))
+        return m
