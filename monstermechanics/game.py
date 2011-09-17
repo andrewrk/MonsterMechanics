@@ -9,6 +9,7 @@ from pyglet import gl
 from vector import v
 from .physics import get_physics
 
+from .controller import AIController
 from .camera import Camera
 from .hud import Shelf
 from .monster import Monster, LEFT, RIGHT
@@ -78,6 +79,13 @@ class Game(object):
     def set_timer(self, callback, duration):
         self.timers.append((callback, duration))
 
+    def unset_timer(self, callback):
+        ts = []
+        for c, duration in self.timers:
+            if c is not callback:
+                ts.append((c, duration))
+        self.timers = ts
+
     def update_timers(self, dt):
         ts = []
         for callback, duration in self.timers:
@@ -91,13 +99,14 @@ class Game(object):
     def update(self, dt):
         self.update_timers(dt)
         if self.control_state[Control.MoveLeft]:
-            self.monster.moving = LEFT
+            self.manual_control()
+            self.monster.left()
         elif self.control_state[Control.MoveRight]:
-            self.monster.moving = RIGHT
-        else:
-            self.monster.moving = 0
+            self.manual_control()
+            self.monster.right()
 
         if self.control_state[Control.Attack]:
+            self.manual_control()
             self.monster.attack()
 
         self.monster.update(dt)
@@ -118,7 +127,15 @@ class Game(object):
 
         if self.message:
             self.message.draw()
-        
+    
+    def auto_monster(self):
+        self.monster.set_controller(AIController(self.world, self.monster, 'player'))
+
+    def manual_control(self):
+        self.monster.set_controller(None)
+        self.unset_timer(self.auto_monster)
+        self.set_timer(self.auto_monster, 2)
+    
     def start(self):
         Monster.load_all()
         self.window = pyglet.window.Window(width=self.size.x, height=self.size.y, caption=name)
@@ -131,6 +148,7 @@ class Game(object):
         self.monster = Monster.create_initial(self.world, v(400, 80))
         self.monster.add_death_listener(self.show_game_over)
         self.world.add_monster(self.monster)
+        self.auto_monster()
 
         if self.filename is not None:
             self.world.add_monster(Monster.enemy_from_json(self.world, self.filename))

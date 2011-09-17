@@ -232,6 +232,27 @@ class Spikes(UpgradeablePart, OutFacingPart, LeafPart):
     RESOURCES = resource_levels('spikes')
 
     MAX_HEALTH = 150, 200, 300
+    DAMAGE = 10, 25, 50
+
+    hit_time = 0
+
+    def get_damage(self):
+        return self.DAMAGE[self.level - 1]
+
+    def update(self, dt):
+        super(Spikes, self).update(dt)
+        if self.hit_time > 0:
+            self.hit_time = max(0, self.hit_time - dt)
+        else:
+            for enemy in self.world.get_enemies_for_name(self.name):
+                p = enemy.colliding(self, allowance=3)
+                if p is None:
+                    continue
+                damage = self.get_damage()
+                self.world.damage_part(p, self.name, damage)
+                self.hit_time = 0.3
+
+        
 
 
 class Scales(UpgradeablePart, OutFacingPart, LeafPart):
@@ -513,7 +534,7 @@ class Monster(object):
         if isinstance(part, Leg):
             self.leg_count -= 1
 
-    def colliding(self, actor):
+    def colliding(self, actor, allowance=0):
         """Find an actor is colliding with this monster."""
         partpos = actor.get_position()
         baseshape = actor.get_base_shape()
@@ -526,7 +547,7 @@ class Monster(object):
                     # FIXME: rotation
                     c = centre + ppos
                     vec = (partpos - c)
-                    if vec.length2 < (radius + partradius) * (radius + partradius):
+                    if vec.length2 < (radius + partradius + allowance) * (radius + partradius + allowance):
                         return currentpart
         return None
 
@@ -687,12 +708,16 @@ class Monster(object):
     def enemy_from_json(world, fname):
         with open(fname, 'r') as f:
             mutant = json.load(f)
+        player = world.get_player()
+        x = player.get_bounds().tl.x
+        mxpos = mutant['parts'][0]['position'][0]
+        trans = x - mxpos + 400
         def refl(pos):
             x, y = pos
             return v(-x, y)
         def refl_and_move(pos):
             x, y = pos
-            return v(- 300 - x, y)
+            return v(trans - x, y)
         def rot(angle):
             return math.pi - angle
 

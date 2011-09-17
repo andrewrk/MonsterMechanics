@@ -19,7 +19,7 @@ class Thistle(Actor):
     MAX_AGE = 5
     age = 0
 
-    DAMAGE = 100, 25, 50, 100
+    DAMAGE = 25, 50, 100
 
     def update(self, dt):
         self.age += dt
@@ -36,14 +36,6 @@ class Thistle(Actor):
         
     def on_hit(self, part):
         damage = self.get_damage()
-        part.health -= damage
-        if part.health <= 0:
-            part.kill()
-
-        friends = self.world.get_friends_for_name(self.name)
-        for f in friends:
-            f.add_mutagen(damage * 1.5 / len(friends))
-        self.world.spawn(DamageActor(self.get_position(), int(damage + 0.5)))
-
+        self.world.damage_part(part, self.name, damage)
         self.world.destroy(self)
 

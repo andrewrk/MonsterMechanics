@@ -1,6 +1,7 @@
 from .vector import v
 from .physics import get_physics
 
+from .digits import DamageActor
 
 class World(object):
     def __init__(self):
@@ -59,6 +60,16 @@ class World(object):
             pass
         else:
             create_body(self.world)
+
+    def damage_part(self, part, attacker_name, damage_amount):
+        part.health -= damage_amount
+        self.spawn(DamageActor(part.get_position(), int(damage_amount + 0.5)))
+        if part.health <= 0:
+            part.kill()
+
+        friends = self.get_friends_for_name(attacker_name)
+        for f in friends:
+            f.add_mutagen(damage_amount * 1.5 / len(friends))
 
     def destroy(self, actor):
         self.actors.remove(actor)
