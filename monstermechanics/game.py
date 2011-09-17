@@ -34,7 +34,7 @@ class Control:
 
 
 class Game(object):
-    def __init__(self, width=853, height=480, show_fps=True):
+    def __init__(self, width=853, height=480, show_fps=False):
         self.size = v(width, height)
         self.show_fps = show_fps
 
@@ -85,9 +85,8 @@ class Game(object):
         self.camera.update(dt)
 
     def on_draw(self):
-        self.window.clear()
         self.camera.set_matrix()
-        self.background.draw()
+        self.background.draw(self.camera.get_viewport())
         self.world.draw()
 
         # hud

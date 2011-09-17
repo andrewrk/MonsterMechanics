@@ -30,6 +30,11 @@ class Camera(object):
     def screen_to_world(self, s):
         return self.center + (s - self.viewport_offset) / self.scale
 
+    def get_viewport(self):
+        tl = v(0, self.viewport_height)
+        br = v(self.viewport_width, 0)
+        return Rect(self.screen_to_world(tl), self.screen_to_world(br))
+
     def set_matrix(self):
         gl.glLoadIdentity()
         gl.glTranslatef(self.viewport_offset.x, self.viewport_offset.y, 0)

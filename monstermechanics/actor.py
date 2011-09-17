@@ -97,6 +97,6 @@ class Actor(object):
 
     def create_body(self, world):
         """Create the physics body for the part"""
-        print "Spawning", self.__class__.__name__, self.name + self.type
+        #print "Spawning", self.__class__.__name__, self.name + self.type
         self.body = world.create_body(self.get_shapes(), collision_class=self.name + self.type)
         self.body.set_position(v(*self.sprite.position))

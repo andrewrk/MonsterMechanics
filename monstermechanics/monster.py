@@ -113,7 +113,6 @@ class BodyPart(Actor):
     _parent = None
 
     def kill(self):
-        print("Killing", self.name, self, self.world)
         for p, j in self._joints:
             p.kill()
         if self._parent is not None:
