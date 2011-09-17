@@ -39,6 +39,37 @@ class PartIcon(object):
 
         return l <= point.x < r and b <= point.y < t
 
+
+class PartHud(object):
+    @classmethod
+    def load(cls):
+        cls.healthbar_full = pyglet.resource.image('ui/healthbar-full.png')
+        cls.healthbar_empty = pyglet.resource.image('ui/healthbar-empty.png')
+
+    def __init__(self, part):
+        self.part = part
+
+    def dead(self):
+        return self.part not in self.part.monster.parts
+
+    def draw(self):
+        frac = min(1, float(self.part.health) / self.part.get_max_health())
+
+        pos = self.part.get_position() + v(0, self.part.get_base_shape().radius)
+        
+        gl.glEnable(gl.GL_BLEND)
+        gl.glBlendFunc(gl.GL_SRC_ALPHA, gl.GL_ONE_MINUS_SRC_ALPHA)
+        w = self.healthbar_empty.width
+        h = self.healthbar_empty.height
+
+        p = pos - v(w/2, 0)
+        self.healthbar_empty.blit(*p)
+
+        fillw = frac * w
+        fill = self.healthbar_full.get_region(0, 0, fillw, h)
+        fill.blit(*p)
+
+
 IconDef = namedtuple('IconDef', 'name sprite cost')
 
 
@@ -64,6 +95,7 @@ class Shelf(object):
 
     @classmethod
     def load(cls):
+        PartHud.load()
         Digits.load()
         imgs = {}
         for icon in ICONS:
@@ -84,6 +116,7 @@ class Shelf(object):
         self.init_icons()
         self.scroll_y = 0
         self.mousedown = False
+        self.parthud = None
 
         self.mutagen_count = Digits(v(20, 410), anchor=Digits.ANCHOR_LEFT)
 
@@ -126,6 +159,11 @@ class Shelf(object):
     def draw(self):
         if self.draggedpart:
             self.draggedpart.draw()
+        if self.parthud:
+            if self.parthud.dead():
+                self.parthud = None
+            else:
+                self.parthud.draw()
         gl.glLoadIdentity()
         gl.glTranslatef(0, self.scroll_y, 0)
         self.batch.draw()
@@ -152,6 +190,19 @@ class Shelf(object):
                 max_scroll = self.height - 30
                 if self.scroll_y < max_scroll:
                     self.scroll_y = min(max_scroll, self.scroll_y - scroll_y * 30)
+
+    def on_mouse_motion(self, x, y, dx, dy):
+        wpos = self.camera.screen_to_world(v(x, y))
+        for m in self.world.monsters:
+            part = m.colliding_point(wpos)
+            if part:
+                break
+        else:
+            self.parthud = None
+            return
+    
+        if self.parthud is None or part is not self.parthud.part:
+            self.parthud = PartHud(part)
 
     def create_virtual_part(self, name, pos):
         try:

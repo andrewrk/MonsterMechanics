@@ -50,9 +50,33 @@ class BodyPart(Actor):
     def get_max_health(self):
         return MAX_HEALTH
 
+    def add_health(self, h, seen=[]):
+        seen = seen[:]
+        self.health += h
+        maxh = self.get_max_health()
+        if self.health > maxh:
+            extra = maxh - extra
+            self.health = maxh
+            conn = self.get_connected()
+            for c in conn:
+                if c in seen:
+                    continue
+                c.add_health(extra / len(conn), seen + [self])
+
+    def get_lung_multiplier(self):
+        lungs = len([p for p in self.get_connected() if isinstance(p, Lung)])
+        return 1.3 ** lungs
+    
     def subparts(self):
         """In nested bodies, return sub-bodies."""
         return [self]
+
+    def get_connected(self):
+        connected = []
+        if self._parent:
+            connected.append(self._parent)
+        connected.extend([p for p, j in self._joints])
+        return connected
 
     def position_to_joint(self, joint):
         """Default implementation does nothing."""
@@ -224,6 +248,12 @@ class Heart(UpgradeablePart, PulsingBodyPart):
     pulse_amount = 0.3
 
     MAX_HEALTH = 200, 300, 400
+    HEAL_RATE = 1, 2, 4
+
+    def update(self, dt):
+        lung_boost = self.get_lung_boost()
+        for c in self.get_connected():
+            c.add_health(lung_boost * self.HEAL_RATE[self.level - 1] * dt, seen=[self])
 
 
 class MutagenBladder(UpgradeablePart, PulsingBodyPart):
@@ -247,8 +277,8 @@ class ThistleGun(UpgradeablePart):
         'right': v(25, 20),
     }
     MUZZLE_IMPULSE = {
-        'left': v(-1, 0.5) * 0.0001,
-        'right': v(1, 0.5) * 0.0001,
+        'left': v(-1, 0.2) * 0.0001,
+        'right': v(1, 0.2) * 0.0001,
     }
 
     dir = 'left'
@@ -473,9 +503,23 @@ class Monster(object):
             for p in currentpart.subparts():
                 ppos = p.get_position()
                 for centre, radius in p.get_shapes():
+                    # FIXME: rotation
                     c = centre + ppos
                     vec = (partpos - c)
                     if vec.length2 < (radius + partradius) * (radius + partradius):
+                        return currentpart
+        return None
+
+    def colliding_point(self, point):
+        """Find an actor is colliding with this monster."""
+        for currentpart in self.parts:
+            for p in currentpart.subparts():
+                ppos = p.get_position()
+                for centre, radius in p.get_shapes():
+                    # FIXME: take into account rotation
+                    c = centre + ppos
+                    vec = (point - c)
+                    if vec.length < radius:
                         return currentpart
         return None
 

@@ -43,7 +43,7 @@ class Thistle(Actor):
         friends = self.world.get_friends_for_name(self.name)
         for f in friends:
             f.add_mutagen(damage * 1.5 / len(friends))
-        self.world.spawn(DamageActor(self.get_position(), damage))
+        self.world.spawn(DamageActor(self.get_position(), int(damage + 0.5)))
 
         self.world.destroy(self)
 

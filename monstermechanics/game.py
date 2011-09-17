@@ -121,6 +121,7 @@ class Game(object):
             on_key_release=self.on_key_release,
             on_mouse_press=self.hud.on_mouse_press,
             on_mouse_release=self.hud.on_mouse_release,
+            on_mouse_motion=self.hud.on_mouse_motion,
             on_mouse_drag=self.hud.on_mouse_drag,
             on_mouse_scroll=self.hud.on_mouse_scroll,
         )
