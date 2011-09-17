@@ -19,6 +19,12 @@ class Rect(object):
 
         return Rect(v(min(l, al), max(t, at)), v(max(r, ar), min(b, ab)))
         
+    def width(self):
+        return self.br.x - self.tl.x
+
+    def height(self):
+        return self.tl.y - self.br.y
+
     def __repr__(self):
         return 'Rect(%r, %r)' % (self.tl, self.br)
     __str__ = __repr__

@@ -20,4 +20,13 @@ class Thistle(Actor):
         self.age += dt
         if self.age > self.MAX_AGE:
             self.world.destroy(self)
+        for enemy in self.world.get_enemies_for_name(self.name):
+            part = enemy.colliding(self)
+            if part:
+                self.on_hit(part)
         
+    def on_hit(self, part):
+        self.deal_damage(part, self.name)
+        print "hit", part
+        self.world.destroy(self)
+

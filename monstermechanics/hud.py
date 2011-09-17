@@ -121,9 +121,10 @@ class Shelf(object):
         cls.mutagen_label.position = v(20, 440)
         cls.images = imgs
 
-    def __init__(self, world, monster):
+    def __init__(self, world, monster, camera):
         self.world = world
         self.monster = monster
+        self.camera = camera
         self.icons = {}
         self.init_icons()
         self.scroll_y = 0
@@ -179,9 +180,9 @@ class Shelf(object):
         return self.icons[name]
 
     def draw(self):
-        gl.glLoadIdentity()
         if self.draggedpart:
             self.draggedpart.draw()
+        gl.glLoadIdentity()
         gl.glTranslatef(0, self.scroll_y, 0)
         self.batch.draw()
         gl.glLoadIdentity()
@@ -223,12 +224,13 @@ class Shelf(object):
         if x > (853 - ICON_HEIGHT - MARGIN) and not self.draggedpart:
             self.scroll_y += dy
 
+        wpos = self.camera.screen_to_world(v(x, y))
         if self.draggedicon and x < (853 - ICON_HEIGHT - MARGIN):
-            self.draggedpart = self.create_virtual_part(self.draggedicon, v(x, y))
+            self.draggedpart = self.create_virtual_part(self.draggedicon, wpos)
             self.draggedicon = None
 
         if self.draggedpart:
-            self.draggedpart.set_position(v(x, y))
+            self.draggedpart.set_position(wpos)
             attachment = self.monster.attachment_point(self.draggedpart)
             if attachment is not None:
                 self.draggedpart.position_to_joint(attachment[1] - attachment[2])
@@ -239,7 +241,8 @@ class Shelf(object):
 
     def on_mouse_release(self, x, y, button, modifiers):
         if self.draggedpart:
-            self.draggedpart.set_position(v(x, y))
+            wpos = self.camera.screen_to_world(v(x, y))
+            self.draggedpart.set_position(wpos)
             try:
                 self.monster.attach_and_grow(self.draggedpart)
             except ValueError:

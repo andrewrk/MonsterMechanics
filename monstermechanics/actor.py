@@ -78,6 +78,9 @@ class Actor(object):
     def get_shapes(self):
         """Return the physics volumes in the shape."""
         return [Circle(c * self.scale, r * self.scale) for c, r in self.part['shapes']]
+    
+    def get_base_shape(self):
+        return self.get_shapes()[0]
 
     def get_position(self):
         if self.body:

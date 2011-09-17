@@ -61,9 +61,6 @@ class BodyPart(Actor):
         else:
             self.sprite.color = (255, 255, 255)
             self.sprite.opacity = 255
-    
-    def get_base_shape(self):
-        return self.get_shapes()[0]
 
     def update(self, dt):
         if self.scale < 1.0:
@@ -137,6 +134,10 @@ class Head(UpgradeablePart):
 
 class Eyeball(LeafPart):
     """An eyeball. Improves accuracy."""
+    RESOURCES = {
+        'default': 'eyeball',
+    }
+    DEFAULT_SPRITE = 'default'
 
 
 class OutFacingPart(BodyPart):
@@ -409,6 +410,22 @@ class Monster(object):
         part.body.destroy()
         if isinstance(part, Leg):
             self.leg_count -= 1
+
+    def colliding(self, actor):
+        """Find an actor is colliding with this monster."""
+        partpos = actor.get_position()
+        baseshape = actor.get_base_shape()
+        partpos += baseshape.center
+        partradius = baseshape.radius
+        for currentpart in self.parts:
+            for p in currentpart.subparts():
+                ppos = p.get_position()
+                for centre, radius in p.get_shapes():
+                    c = centre + ppos
+                    vec = (partpos - c)
+                    if vec.length2 < (radius + partradius) * (radius + partradius):
+                        return currentpart
+        return None
 
     def attachment_point(self, part):
         """Find an attachment point for part to any of the parts in this monster.

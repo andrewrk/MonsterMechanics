@@ -81,7 +81,7 @@ class Game(object):
         self.monster.update(dt)
         self.world.update(dt)
         self.hud.update(dt)
-        self.camera.track_bounds(self.monster.get_bounds())
+        self.camera.track_bounds(self.world.get_monster_bounds())
         self.camera.update(dt)
 
     def on_draw(self):
@@ -104,12 +104,14 @@ class Game(object):
         self.background = Background(self.window)
 
         self.world = World()
-        if self.filename is not None:
-            self.enemy = Monster.enemy_from_json(self.world, self.filename)
         self.monster = Monster.create_initial(self.world, v(400, 80))
+        self.world.add_monster(self.monster)
+
+        if self.filename is not None:
+            self.world.add_monster(Monster.enemy_from_json(self.world, self.filename))
 
         Shelf.load()
-        self.hud = Shelf(self.world, self.monster)
+        self.hud = Shelf(self.world, self.monster, self.camera)
 
         self.fps_display = pyglet.clock.ClockDisplay()
 

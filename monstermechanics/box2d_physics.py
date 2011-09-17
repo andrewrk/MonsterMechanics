@@ -102,6 +102,7 @@ class Box2DBody(AbstractBody):
         self.density = density
         self.restitution = restitution
         self.friction = friction
+        self.collision_class = collision_class
         if collision_class is None:
             self.collision_category = 0xffff
             self.collision_mask = 0xffff
