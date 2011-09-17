@@ -1,5 +1,8 @@
 from __future__ import division, print_function, unicode_literals; range = xrange
 
+import random
+import os
+import os.path
 import pyglet
 from pyglet.window import key
 from pyglet import gl
@@ -59,15 +62,34 @@ class Game(object):
         self.scroll = v(0,0)
         self.filename = None
         self.enemy = None
+        self.enemy_number = 1
+        self.level = 1
+        self.own_enemies = False
         self.camera = None
+        self.message = None
 
+        self.timers = []
 
     def getNextGroupNum(self):
         val = self.next_group_num
         self.next_group_num += 1
         return val
+        
+    def set_timer(self, callback, duration):
+        self.timers.append((callback, duration))
 
+    def update_timers(self, dt):
+        ts = []
+        for callback, duration in self.timers:
+            duration -= dt
+            if duration <= 0:
+                callback()
+            else:
+                ts.append((callback, duration))
+        self.timers = ts
+    
     def update(self, dt):
+        self.update_timers(dt)
         if self.control_state[Control.MoveLeft]:
             self.monster.moving = LEFT
         elif self.control_state[Control.MoveRight]:
@@ -93,6 +115,9 @@ class Game(object):
         self.hud.draw()
         if self.show_fps:
             self.fps_display.draw()
+
+        if self.message:
+            self.message.draw()
         
     def start(self):
         Monster.load_all()
@@ -108,6 +133,10 @@ class Game(object):
 
         if self.filename is not None:
             self.world.add_monster(Monster.enemy_from_json(self.world, self.filename))
+            self.show_message('fight', 2)
+        else:
+            self.set_timer(self.spawn_next_enemy, 1.5)
+            self.show_message('get-ready')
 
         Shelf.load()
         self.hud = Shelf(self.world, self.monster, self.camera)
@@ -128,16 +157,65 @@ class Game(object):
 
         pyglet.app.run()
 
+    loaded_images = {}
+
+    def show_message(self, fname, duration=None):
+        x = self.size.x / 2
+        y = self.size.y / 2
+        try:
+            pic = self.loaded_images[fname]
+        except KeyError:
+            path = 'ui/%s.png' % fname
+            pic = pyglet.resource.image(path)
+            pic.anchor_x = pic.width // 2
+            pic.anchor_y = pic.height // 2
+            self.loaded_images[fname] = pic
+        self.message = pyglet.sprite.Sprite(pic, x=x, y=y)
+        if duration is not None:
+            self.set_timer(self.clear_message, duration)
+
+    def clear_message(self):
+        self.message = None
+
+    def spawn_next_enemy(self):
+        try:
+            if self.own_enemies:
+                path = os.path.join('data', 'saves', str(self.enemy_number))
+                f = random.choice(os.listdir(path))
+                monster = Monster.enemy_from_json(self.world, os.path.join(path, f))
+            else:
+                monster = Monster.enemy_from_json(self.world, 'data/enemies/enemy%d.json' % self.enemy_number)
+        except IOError:
+            self.show_message('congratulations')
+            self.own_enemies = True
+            self.enemy_number = 1
+        else:
+            monster.add_death_listener(self.on_enemy_death)
+            self.world.add_monster(monster)
+            self.enemy_number += 1
+            self.show_message('fight', 2.5)
+
+    def on_enemy_death(self, monster):
+        self.save()
+        self.level += 1
+        self.show_message('get-ready', 4.8)
+        self.set_timer(self.spawn_next_enemy, 5)
+
     def save(self):
         import json
-        import datetime
-        import pprint
+        from hashlib import md5
         from .screenshot import take_screenshot
-        fname = datetime.datetime.now().strftime('mutants/mutant-%Y-%m-%d_%H:%M:%S.%f')
-        take_screenshot(self.window, filename=fname + '.jpg')
-        pprint.pprint(self.monster.to_json())
-        with open(fname + '.json', 'w') as f:
-            f.write(json.dumps(self.monster.to_json(), indent=2))
+        js = json.dumps(self.monster.to_json(), indent=2)
+        hash = md5(js).hexdigest()
+
+        path = os.path.join('data', 'saves', str(self.level))
+        try:
+            os.makedirs(path)
+        except (OSError, IOError):
+            pass
+        take_screenshot(self.window, filename=os.path.join(path, hash + '.jpg'))
+        with open(os.path.join(path, hash + '.json'), 'w') as f:
+            f.write(js)
 
     def on_key_press(self, symbol, modifiers):
         if symbol == key.F12: 

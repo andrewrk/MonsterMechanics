@@ -48,14 +48,14 @@ class BodyPart(Actor):
         self.health = self.get_max_health()
 
     def get_max_health(self):
-        return MAX_HEALTH
+        return self.MAX_HEALTH
 
     def add_health(self, h, seen=[]):
         seen = seen[:]
         self.health += h
         maxh = self.get_max_health()
         if self.health > maxh:
-            extra = maxh - extra
+            extra = maxh - self.health
             self.health = maxh
             conn = self.get_connected()
             for c in conn:
@@ -251,7 +251,8 @@ class Heart(UpgradeablePart, PulsingBodyPart):
     HEAL_RATE = 1, 2, 4
 
     def update(self, dt):
-        lung_boost = self.get_lung_boost()
+        super(Heart, self).update(dt)
+        lung_boost = self.get_lung_multiplier()
         for c in self.get_connected():
             c.add_health(lung_boost * self.HEAL_RATE[self.level - 1] * dt, seen=[self])
 
@@ -443,7 +444,7 @@ class Monster(object):
         self.name = name
         self.leg_count = len([p for p in self.parts if isinstance(p, Leg)])
         self.moving = 0
-        self.mutagen = 1000
+        self.mutagen = 500
         self.death_listeners = []
 
     def set_mutagen(self, value):
