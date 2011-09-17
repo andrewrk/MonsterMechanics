@@ -5,6 +5,7 @@ from pyglet import gl
 from vector import v
 
 from .monster import *
+from .digits import Digits
 
 
 ICON_HEIGHT = 64
@@ -12,52 +13,7 @@ ICON_HALF = ICON_HEIGHT * 0.5
 MARGIN = 10
 ICON_SEP = 5
 
-class Digits(object):
-    ANCHOR_LEFT = 0
-    ANCHOR_CENTER = 0.5
-    ANCHOR_RIGHT = 1
-
-    @classmethod
-    def load(cls):
-        imgs = []
-        for i in range(10):
-            path = 'ui/digits/g%d.png' % i
-            imgs.append(pyglet.resource.image(path))
-        cls.images = imgs
-
-    def __init__(self, pos, value=0, anchor=ANCHOR_RIGHT):
-        self.pos = pos
-        self.anchor = anchor
-        self.value = value
-        self.display_value = value
-
-    def set(self, value):
-        self.value = value
-
-    def get_digits(self):
-        return [int(c) for c in str(int(self.display_value + 0.5))]
-
-    def get_width(self):
-        w = 0
-        for d in self.get_digits():
-            w += self.images[d].width
-        return w
-    
-    def update(self, dt):
-        self.display_value = self.value + (self.display_value - self.value) * 0.1 ** (dt * 2)
-
-    def draw(self):
-        p = self.pos
-        w = self.get_width()
-        p += v(-1, 0) * w * self.anchor
-
-        gl.glEnable(gl.GL_BLEND)
-        gl.glBlendFunc(gl.GL_SRC_ALPHA, gl.GL_ONE_MINUS_SRC_ALPHA)
-        for d in self.get_digits():
-            img = self.images[d]
-            img.blit(*p)
-            p += v(1, 0) * img.width
-            
+ 
 
 
 class PartIcon(object):

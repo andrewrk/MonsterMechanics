@@ -1,7 +1,8 @@
-from vector import v
-from geom import Circle
+from .vector import v
+from .geom import Circle
 
-from actor import Actor
+from .actor import Actor
+from .digits import DamageActor
 
 
 class Thistle(Actor):
@@ -42,6 +43,7 @@ class Thistle(Actor):
         friends = self.world.get_friends_for_name(self.name)
         for f in friends:
             f.add_mutagen(damage * 1.5 / len(friends))
+        self.world.spawn(DamageActor(self.get_position(), damage))
 
         self.world.destroy(self)
 
