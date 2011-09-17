@@ -3,6 +3,7 @@ import pyglet
 from pyglet import gl
 
 from vector import v
+from geom import Rect
 
 from .monster import *
 from .digits import Digits
@@ -45,17 +46,23 @@ class PartHud(object):
     def load(cls):
         cls.healthbar_full = pyglet.resource.image('ui/healthbar-full.png')
         cls.healthbar_empty = pyglet.resource.image('ui/healthbar-empty.png')
+        cls.star = pyglet.resource.image('ui/upgrade-star.png')
+        cls.upgrade_button = pyglet.resource.image('ui/upgrade-button.png')
 
     def __init__(self, part):
         self.part = part
+        self.locked = False # whether to destroy it on mouseout
+        self.upgrade_button_rect = None
 
     def dead(self):
         return self.part not in self.part.monster.parts
 
-    def draw(self):
+    def draw(self, camera):
         frac = min(1, float(self.part.health) / self.part.get_max_health())
 
         pos = self.part.get_position() + v(0, self.part.get_base_shape().radius)
+        pos = camera.world_to_screen(pos)
+        pos = v(int(pos.x + 0.5), int(pos.y + 0.5))
         
         gl.glEnable(gl.GL_BLEND)
         gl.glBlendFunc(gl.GL_SRC_ALPHA, gl.GL_ONE_MINUS_SRC_ALPHA)
@@ -68,14 +75,26 @@ class PartHud(object):
         fillw = frac * w
         fill = self.healthbar_full.get_region(0, 0, fillw, h)
         fill.blit(*p)
+        if hasattr(self.part, 'level'):
+            self.draw_level(p + v(0, 20))
+
+    def draw_level(self, pos):
+        p = pos
+        for i in range(self.part.level):
+            self.star.blit(*p)
+            p += v(self.star.width, 0)
+        if self.part.can_upgrade():
+            p = pos + v(self.healthbar_empty.width - self.upgrade_button.width, 0)
+            self.upgrade_button.blit(*p)
+            self.upgrade_button_rect = Rect(p + v(0, self.upgrade_button.height), p + v(self.upgrade_button.width, 0))
 
 
 IconDef = namedtuple('IconDef', 'name sprite cost')
 
 
 ICONS = [
-    IconDef('arm', 'sprites/icon-arm.png', 500),
-    IconDef('claw', 'sprites/icon-claw.png', 300),
+    #IconDef('arm', 'sprites/icon-arm.png', 500),
+    #IconDef('claw', 'sprites/icon-claw.png', 300),
     IconDef('leg', 'sprites/icon-leg.png', 500),
     IconDef('scales', 'sprites/icon-scales.png', 25),
     IconDef('spikes', 'sprites/icon-spikes.png', 25),
@@ -159,12 +178,12 @@ class Shelf(object):
     def draw(self):
         if self.draggedpart:
             self.draggedpart.draw()
+        gl.glLoadIdentity()
         if self.parthud:
             if self.parthud.dead():
                 self.parthud = None
             else:
-                self.parthud.draw()
-        gl.glLoadIdentity()
+                self.parthud.draw(self.camera)
         gl.glTranslatef(0, self.scroll_y, 0)
         self.batch.draw()
         gl.glLoadIdentity()
@@ -179,6 +198,18 @@ class Shelf(object):
 
     def on_mouse_press(self, x, y, button, modifiers):
         self.draggedicon = self.icon_for_point(x, y)
+        if self.parthud:
+            s = v(x, y)
+            if self.parthud.upgrade_button_rect and self.parthud.upgrade_button_rect.contains(s):
+                self.parthud.part.upgrade()
+            else:
+                wpos = self.camera.screen_to_world(s)
+                for m in self.world.monsters:
+                    part = m.colliding_point(wpos)
+                    if part and part is self.parthud.part:
+                        break
+                else:
+                    self.parthud = None
         self.mousedown = True
 
     def on_mouse_scroll(self, x, y, scroll_x, scroll_y):
@@ -192,13 +223,16 @@ class Shelf(object):
                     self.scroll_y = min(max_scroll, self.scroll_y - scroll_y * 30)
 
     def on_mouse_motion(self, x, y, dx, dy):
+        if self.parthud and self.parthud.locked:
+            return
         wpos = self.camera.screen_to_world(v(x, y))
         for m in self.world.monsters:
             part = m.colliding_point(wpos)
             if part:
                 break
         else:
-            self.parthud = None
+            if self.parthud and not self.parthud.locked:
+                self.parthud = None
             return
     
         if self.parthud is None or part is not self.parthud.part:
@@ -244,6 +278,8 @@ class Shelf(object):
                 pass
             else:
                 self.monster.spend_mutagen(self.draggedpart.cost)
+        elif self.parthud:
+            self.parthud.locked = True
         self.draggedpart = None
         self.draggedicon = None
         self.mousedown = False

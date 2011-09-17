@@ -19,6 +19,12 @@ class Rect(object):
 
         return Rect(v(min(l, al), max(t, at)), v(max(r, ar), min(b, ab)))
         
+    def contains(self, p):
+        l, t = self.tl
+        r, b = self.br
+
+        return l <= p.x < r and b <= p.y < t
+
     def width(self):
         return self.br.x - self.tl.x
 

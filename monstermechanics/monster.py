@@ -172,6 +172,15 @@ class UpgradeablePart(BodyPart):
 
     level = 1
 
+    def can_upgrade(self):
+        # FIXME: check mutagen level
+        return self.level < 3 and self.name == 'player'
+
+    def upgrade(self):
+        self.level += 1
+        self.set_part('level%d' % self.level)
+        self.health = self.get_max_health() 
+
     def get_max_health(self):
         return self.MAX_HEALTH[self.level - 1]
 
@@ -342,6 +351,8 @@ class ThistleGun(UpgradeablePart):
         pos = self.get_position() + self.MUZZLE[dir]
         projectile = self.PROJECTILE(pos, self.name)
         self.world.spawn(projectile)
+        projectile.set_level(self.level)
+        projectile.multiplier = self.get_lung_multiplier()
         projectile.body.apply_impulse(vel, pos)
         self.body.apply_impulse(-5 * vel, pos)
 

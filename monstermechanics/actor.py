@@ -41,8 +41,8 @@ class Actor(object):
     def __init__(self, pos, name='player'):
         self.sprite = None
         self.name = name
-        self.set_default_part()
         self.body = None
+        self.set_default_part()
         self.scale = 1.0
         self.set_position(pos)
         self._joints = []
@@ -62,6 +62,9 @@ class Actor(object):
             self.part = self.resources[name]
 
         self.sprite = pyglet.sprite.Sprite(self.part['img'])
+        if self.body:
+            self.body.set_shapes(self.part['shapes'])
+            self.sprite.position = self.body.get_position()
 
     def set_scale(self, scale):
         """Set the scale of the actor."""

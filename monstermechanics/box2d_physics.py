@@ -133,6 +133,10 @@ class Box2DBody(AbstractBody):
             circledef.friction = self.friction
             self.shapes.append(self.body.CreateShape(circledef))
 
+    def set_shapes(self, shapes):
+        self.circles = shapes
+        self.set_scale(self.scale)
+
     def set_scale(self, scale):
         for shape in self.shapes:
             self.body.DestroyShape(shape)

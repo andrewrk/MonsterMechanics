@@ -30,6 +30,9 @@ class Camera(object):
     def screen_to_world(self, s):
         return self.center + (s - self.viewport_offset) / self.scale
 
+    def world_to_screen(self, w):
+        return (w - self.center) * self.scale + self.viewport_offset
+
     def get_viewport(self):
         tl = v(0, self.viewport_height)
         br = v(self.viewport_width, 0)
