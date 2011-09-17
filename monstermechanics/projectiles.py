@@ -13,20 +13,36 @@ class Thistle(Actor):
     type = 'projectile'
     DEFAULT_PART = 'level1'
 
+    level = 1
+
     MAX_AGE = 5
     age = 0
+
+    DAMAGE = 100, 25, 50, 100
 
     def update(self, dt):
         self.age += dt
         if self.age > self.MAX_AGE:
             self.world.destroy(self)
+            return
         for enemy in self.world.get_enemies_for_name(self.name):
             part = enemy.colliding(self)
             if part:
                 self.on_hit(part)
+
+    def get_damage(self):
+        return self.DAMAGE[self.level - 1]
         
     def on_hit(self, part):
-        self.deal_damage(part, self.name)
-        print "hit", part
+        damage = self.get_damage()
+        part.health -= damage
+        if part.health <= 0:
+            part.kill()
+
+        friends = self.world.get_friends_for_name(self.name)
+        for f in friends:
+            f.add_mutagen(damage * 1.5 / len(friends))
+
+        print "hit", part, part.health
         self.world.destroy(self)
 

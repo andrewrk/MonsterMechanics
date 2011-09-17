@@ -98,7 +98,6 @@ ICONS = [
     IconDef('eyeball', 'sprites/icon-eyeball.png', 5),
     IconDef('thistlegun', 'sprites/icon-thistlegun.png', 250),
     IconDef('mutagenbladder', 'sprites/icon-mutagenbladder.png', 75),
-    IconDef('eggsack', 'sprites/icon-eggsack.png', 600),
 ]
 
 
@@ -131,21 +130,6 @@ class Shelf(object):
         self.mousedown = False
 
         self.mutagen_count = Digits(v(20, 410), anchor=Digits.ANCHOR_LEFT)
-        self.set_mutagen(1000)
-
-    def set_mutagen(self, value):
-        self.mutagen_count.set(value)
-        v = self.mutagen_count.value
-        for i in self.icons.values():
-            i.set_disabled(i.cost > v)
-
-    def add_mutagen(self, value):
-        v = self.mutagen_count.value
-        self.set_mutagen(v + value)
-
-    def spend_mutagen(self, value):
-        v = self.mutagen_count.value
-        self.set_mutagen(v - value)
 
     def init_icons(self):
         self.batch = pyglet.graphics.Batch()
@@ -174,6 +158,10 @@ class Shelf(object):
             if self.scroll_y > max_scroll:
                 self.scroll_y = max_scroll + (self.scroll_y - max_scroll) * 0.001 ** dt
 
+        v = self.monster.mutagen
+        for i in self.icons.values():
+            i.set_disabled(i.cost > v)
+        self.mutagen_count.value = v
         self.mutagen_count.update(dt)
 
     def get_icon(self, name):
@@ -248,7 +236,7 @@ class Shelf(object):
             except ValueError:
                 pass
             else:
-                self.spend_mutagen(self.draggedpart.cost)
+                self.monster.spend_mutagen(self.draggedpart.cost)
         self.draggedpart = None
         self.draggedicon = None
         self.mousedown = False

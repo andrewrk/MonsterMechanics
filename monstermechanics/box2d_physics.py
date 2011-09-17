@@ -48,8 +48,11 @@ class Box2DWorld(AbstractWorld):
         self.update_callbacks.append(c)
     
     def update(self, dt):
-        for c in self.update_callbacks:
-            c(dt)
+        for c in self.update_callbacks[:]:
+            try:
+                c(dt)
+            except AttributeError:
+                self.update_callbacks.remove(c)
         self.world.Step(dt, 10, 8)
 
     def create_ground(self, y):

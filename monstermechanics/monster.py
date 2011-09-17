@@ -43,6 +43,13 @@ class BodyPart(Actor):
 
     __str__ = __repr__
 
+    def __init__(self, pos, name='player'):
+        super(BodyPart, self).__init__(pos, name)
+        self.health = self.get_max_health()
+
+    def get_max_health(self):
+        return MAX_HEALTH
+
     def subparts(self):
         """In nested bodies, return sub-bodies."""
         return [self]
@@ -103,6 +110,21 @@ class BodyPart(Actor):
                 bounds = bounds.union(sbounds)
         return bounds
 
+    _parent = None
+
+    def kill(self):
+        print("Killing", self.name, self, self.world)
+        for p, j in self._joints:
+            p.kill()
+        if self._parent is not None:
+            self._parent._joints = [(p, j) for p, j in self._parent._joints if p is not self]
+
+        self.world.destroy(self)
+        self.monster.remove_part(self)
+        if self._parent is None:
+            self.monster.kill()
+
+
 
 def resource_levels(base):
     return {
@@ -117,6 +139,9 @@ class UpgradeablePart(BodyPart):
 
     level = 1
 
+    def get_max_health(self):
+        return self.MAX_HEALTH[self.level - 1]
+
 
 class LeafPart(BodyPart):
     """A BodyPart nothing else can attach to."""
@@ -128,6 +153,8 @@ class Head(UpgradeablePart):
     """The head of the monster"""
     RESOURCES = resource_levels('head')
 
+    MAX_HEALTH = 500, 1000, 1500
+
     def can_attach(self, part):
         return not part.ATTACH_CENTER
 
@@ -138,6 +165,8 @@ class Eyeball(LeafPart):
         'default': 'eyeball',
     }
     DEFAULT_SPRITE = 'default'
+
+    MAX_HEALTH = 30
 
 
 class OutFacingPart(BodyPart):
@@ -165,13 +194,19 @@ class Wing(UpgradeablePart):
     RESOURCES = resource_levels('wing')
     ATTACH_CENTER = True
 
+    MAX_HEALTH = 50, 100, 200
+
 
 class Spikes(UpgradeablePart, OutFacingPart, LeafPart):
     RESOURCES = resource_levels('spikes')
 
+    MAX_HEALTH = 150, 200, 300
+
 
 class Scales(UpgradeablePart, OutFacingPart, LeafPart):
     RESOURCES = resource_levels('scales')
+
+    MAX_HEALTH = 250, 400, 750
 
 
 class Lung(PulsingBodyPart):
@@ -180,6 +215,7 @@ class Lung(PulsingBodyPart):
         'lung': 'lung'
     }
     DEFAULT_PART = 'lung'
+    MAX_HEALTH = 300
 
 
 class Heart(UpgradeablePart, PulsingBodyPart):
@@ -188,12 +224,16 @@ class Heart(UpgradeablePart, PulsingBodyPart):
     pulse_rate = 3
     pulse_amount = 0.3
 
+    MAX_HEALTH = 200, 300, 400
+
 
 class MutagenBladder(UpgradeablePart, PulsingBodyPart):
     """Mutagen bladders add to the monster's mutagen storage capacity."""
     RESOURCES = resource_levels('mutagenbladder')
     pulse_rate = 0.01
     pulse_amount = 0.05
+
+    MAX_HEALTH = 100, 150, 200
 
     def get_mutagen_capacity(self):
         return 100 * 2 ** self.level
@@ -217,6 +257,7 @@ class ThistleGun(UpgradeablePart):
     attack_timer = 0
     
     PROJECTILE = Thistle
+    MAX_HEALTH = 100, 200, 300
 
     def update(self, dt):
         super(ThistleGun, self).update(dt)
@@ -242,15 +283,10 @@ class ThistleGun(UpgradeablePart):
         self.body.apply_impulse(-5 * vel, pos)
 
 
-
-class EggSack(BodyPart):
-    RESOURCES = {
-        'default': 'egg-sack'
-    }
-
-
 class Claw(UpgradeablePart):
     RESOURCES = resource_levels('claws')
+
+    MAX_HEALTH = 200, 300, 500
 
     def can_attach(self, part):
         return isinstance(part, Eyeball)
@@ -258,6 +294,8 @@ class Claw(UpgradeablePart):
 
 class Leg(UpgradeablePart):
     RESOURCES = resource_levels('leg')
+
+    MAX_HEALTH = 300, 450, 600
 
     def update(self, dt):
         super(Leg, self).update(dt)
@@ -282,6 +320,8 @@ class UpperArm(BodyPart):
 
 class Arm(BodyPart):
     ATTACH_CENTER = True
+
+    MAX_HEALTH = 200, 300, 500
 
     @classmethod
     def load(cls):
@@ -351,7 +391,6 @@ PART_CLASSES = {
     'wing': Wing,
     'mutagenbladder': MutagenBladder,
     'thistlegun': ThistleGun,
-    'eggsack': EggSack,
 }
 
 class Monster(object):
@@ -370,9 +409,23 @@ class Monster(object):
     def __init__(self, world, parts, name='player'):
         self.world = world
         self.parts = parts
+        for p in self.parts:
+            p.monster = self
         self.name = name
         self.leg_count = len([p for p in self.parts if isinstance(p, Leg)])
         self.moving = 0
+        self.mutagen = 1000
+        self.death_listeners = []
+
+    def set_mutagen(self, value):
+        self.mutagen = value
+
+    def add_mutagen(self, value):
+        cap = self.get_mutagen_capacity()
+        self.mutagen = min(cap, self.mutagen + value)
+
+    def spend_mutagen(self, value):
+        self.mutagen = max(0, self.mutagen - value)
 
     def get_bounds(self):
         bounds = None
@@ -399,6 +452,7 @@ class Monster(object):
                 p.attack()
 
     def add_part(self, part):
+        part.monster = self
         if isinstance(part, Leg):
             self.leg_count += 1
             self.parts.insert(0, part)
@@ -407,7 +461,6 @@ class Monster(object):
 
     def remove_part(self, part):
         self.parts.remove(part)
-        part.body.destroy()
         if isinstance(part, Leg):
             self.leg_count -= 1
 
@@ -508,6 +561,7 @@ class Monster(object):
         assert part is not target
         j = target.body.attach(part.body, jointpos)
         target._joints.append((part, j))
+        part._parent = target
 
     def to_json(self):
         parts = []
@@ -525,6 +579,14 @@ class Monster(object):
             'parts': parts,
             'joints': joints
         }
+
+    def add_death_listener(self, l):
+        self.death_listeners.append(l)
+    
+    def kill(self):
+        self.world.remove_monster(self)
+        for l in self.death_listeners:
+            l(self)
 
     @staticmethod
     def from_json(world, json, name):
@@ -547,6 +609,7 @@ class Monster(object):
             body1 = part_map[j['body1']]
             body2 = part_map[j['body2']]
             body1._joints.append((body2, body1.body.restore_joint(body2.body, j)))
+            body2._parent = body1
         return Monster(world, parts, name=name)
 
     @staticmethod
