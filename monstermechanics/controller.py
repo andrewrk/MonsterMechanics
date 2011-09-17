@@ -17,10 +17,22 @@ class AIController(object):
             self.target = None
 
     def get_monster_x(self):
-        return self.monster.get_bounds().br.x
+        return self.monster.get_position().x
 
     def get_enemy_x(self):
-        return self.target.get_bounds().tl.x
+        return self.target.get_position().x
+
+    def towards(self):
+        if self.get_monster_x() < self.get_enemy_x():
+            self.monster.right()
+        else:
+            self.monster.left()
+
+    def away(self):
+        if self.get_monster_x() > self.get_enemy_x():
+            self.monster.right()
+        else:
+            self.monster.left()
 
     def update(self, dt):
         self.time += 0
@@ -45,8 +57,9 @@ class AdvanceStrategy(object):
         self.monster = controller.monster
 
     def update(self):
-        if self.controller.get_monster_x() < self.controller.get_enemy_x() - 100:
-            self.monster.right()
+        dist = abs(self.controller.get_monster_x() - self.controller.get_enemy_x())
+        if dist > 100:
+            self.controller.towards()
         else:
             self.controller.strategy = None
 
@@ -58,6 +71,8 @@ class RetreatStrategy(object):
         self.start = self.controller.time
 
     def update(self):
-        self.monster.left()
+        dist = abs(self.controller.get_monster_x() - self.controller.get_enemy_x())
+        if dist < 600:
+            self.controller.away()
         if self.controller.time - self.start > 2:
             self.controller.strategy = None

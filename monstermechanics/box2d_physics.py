@@ -239,7 +239,7 @@ class StiffJoint(object):
 
     def update(self, dt):
         angleError = self.joint.GetJointAngle()
-        gain = 2
+        gain = 1
         self.joint.SetMotorSpeed(-gain * angleError)
 
     def destroy(self):

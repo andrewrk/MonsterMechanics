@@ -375,7 +375,7 @@ class Leg(UpgradeablePart):
         super(Leg, self).update(dt)
         #FIXME: only apply torque if the leg is touching the ground
         rot = self.body.get_rotation()
-        gain = -0.0005
+        gain = -0.0003
         self.body.apply_torque(rot * gain)
 
 
@@ -495,6 +495,9 @@ class Monster(object):
     def set_mutagen(self, value):
         self.mutagen = value
 
+    def get_position(self):
+        return self.parts[0].get_position()
+
     def add_mutagen(self, value):
         cap = self.get_mutagen_capacity()
         self.mutagen = min(cap, self.mutagen + value)
@@ -608,7 +611,7 @@ class Monster(object):
         if self.controller:
             self.controller.update(dt)
         if self.moving in [LEFT, RIGHT]:
-            self.phase += self.moving * dt * 6
+            self.phase += self.moving * dt * 2
             for p in self.parts:
                 if not isinstance(p, Leg):
                     continue
