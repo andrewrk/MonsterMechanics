@@ -172,11 +172,16 @@ class UpgradeablePart(BodyPart):
 
     level = 1
 
+    def upgrade_cost(self):
+        return self.cost * 2 ** self.level
+
     def can_upgrade(self):
-        # FIXME: check mutagen level
+        if self.upgrade_cost() > self.monster.mutagen:
+            return False
         return self.level < 3 and self.name == 'player'
 
-    def upgrade(self):
+    def upgrade(self): 
+        self.monster.spend_mutagen(self.upgrade_cost())
         self.level += 1
         self.set_part('level%d' % self.level)
         self.health = self.get_max_health() 
@@ -196,6 +201,8 @@ class Head(UpgradeablePart):
     RESOURCES = resource_levels('head')
 
     MAX_HEALTH = 500, 1000, 1500
+
+    cost = 1000
 
     def can_attach(self, part):
         return not part.ATTACH_CENTER

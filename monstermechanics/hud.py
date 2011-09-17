@@ -124,7 +124,9 @@ class Shelf(object):
             imgs[icon.name] = img
 
         cls.mutagen_label = pyglet.sprite.Sprite(pyglet.resource.image('ui/mutagen.png'))
+        cls.cost_label = pyglet.sprite.Sprite(pyglet.resource.image('ui/cost.png'))
         cls.mutagen_label.position = v(20, 440)
+        cls.cost_label.position = v(200, 443)
         cls.images = imgs
 
     def __init__(self, world, monster, camera):
@@ -138,6 +140,8 @@ class Shelf(object):
         self.parthud = None
 
         self.mutagen_count = Digits(v(20, 410), anchor=Digits.ANCHOR_LEFT)
+        self.cost_display = Digits(v(200, 410), anchor=Digits.ANCHOR_LEFT)
+        self.cost_value = None
 
     def init_icons(self):
         self.batch = pyglet.graphics.Batch()
@@ -189,6 +193,11 @@ class Shelf(object):
         gl.glLoadIdentity()
         self.mutagen_label.draw()
         self.mutagen_count.draw()
+        if self.cost_value:
+            self.cost_label.draw()
+            self.cost_display.value = self.cost_value
+            self.cost_display.display_value = self.cost_value
+            self.cost_display.draw()
 
     def icon_for_point(self, x, y):
         point = v(x, y) - v(0, self.scroll_y)
@@ -223,8 +232,17 @@ class Shelf(object):
                     self.scroll_y = min(max_scroll, self.scroll_y - scroll_y * 30)
 
     def on_mouse_motion(self, x, y, dx, dy):
-        if self.parthud and self.parthud.locked:
-            return
+        icon = self.icon_for_point(x, y)
+        if icon:
+            self.cost_value = self.icons[icon].cost
+        else:
+            self.cost_value = None
+        if self.parthud:
+            s = v(x, y)
+            if self.parthud.upgrade_button_rect and self.parthud.upgrade_button_rect.contains(s):
+                self.cost_value = self.parthud.part.upgrade_cost()
+            if self.parthud.locked:
+                return
         wpos = self.camera.screen_to_world(v(x, y))
         for m in self.world.monsters:
             part = m.colliding_point(wpos)
