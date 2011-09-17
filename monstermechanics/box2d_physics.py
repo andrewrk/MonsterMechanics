@@ -196,7 +196,6 @@ class Box2DBody(AbstractBody):
         else:
             joint.referenceAngle = refangle
         j = StiffJoint(self.world, joint, self, another)
-        print j.to_json()
         self.joints.append(j)
         another.joints.append(j)
         self.world.add_update_callback(j.update)

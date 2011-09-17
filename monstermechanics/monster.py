@@ -5,7 +5,7 @@ import pyglet
 import json
 
 from actor import Actor
-from geom import Circle
+from geom import *
 from vector import v
 
 from projectiles import Thistle
@@ -486,9 +486,7 @@ class Monster(object):
         }
 
     @staticmethod
-    def from_json(world, fname, name='player'):
-        with open(fname, 'r') as f:
-            mutant = json.load(f)
+    def from_json(world, json, name):
 
         classes = {}
         for n, cls in PART_CLASSES.items():
@@ -496,7 +494,7 @@ class Monster(object):
 
         part_map = {}
         parts = []
-        for p in mutant['parts']:
+        for p in json['parts']:
             cls = classes[p['type']]
             part = cls.from_json(p, name)
             parts.append(part)
@@ -504,8 +502,40 @@ class Monster(object):
             world.spawn(part)
 
         # re-attach parts with joints
-        for j in mutant['joints']:
+        for j in json['joints']:
             body1 = part_map[j['body1']]
             body2 = part_map[j['body2']]
             body1._joints.append((body2, body1.body.restore_joint(body2.body, j)))
         return Monster(world, parts, name=name)
+
+    @staticmethod
+    def player_from_json(world, fname):
+        with open(fname, 'r') as f:
+            mutant = json.load(f)
+        return Monster.from_json(world, mutant, 'player')
+
+    @staticmethod
+    def enemy_from_json(world, fname):
+        with open(fname, 'r') as f:
+            mutant = json.load(f)
+        def refl(pos):
+            x, y = pos
+            return v(-x, y)
+        def refl_and_move(pos):
+            x, y = pos
+            return v(- 300 - x, y)
+        def rot(angle):
+            return math.pi - angle
+
+        for p in mutant['parts']:
+            p['position'] = refl_and_move(p['position'])
+            p['angle'] = rot(p['angle']) 
+        for j in mutant['joints']:
+            j['anchor1'] = refl(j['anchor1'])
+            j['anchor2'] = refl(j['anchor2'])
+            j['angle'] = rot(j['angle']) 
+            j['refAngle'] = rot(j['refAngle']) 
+
+        return Monster.from_json(world, mutant, 'enemy')
+
+        

@@ -57,6 +57,7 @@ class Game(object):
         self.control_state = [False] * (len(dir(Control)) - 2)
         self.scroll = v(0,0)
         self.filename = None
+        self.enemy = None
 
 
     def getNextGroupNum(self):
@@ -99,9 +100,8 @@ class Game(object):
 
         self.world = World()
         if self.filename is not None:
-            self.monster = Monster.from_json(self.world, self.filename)
-        else:
-            self.monster = Monster.create_initial(self.world, v(400, 80))
+            self.enemy = Monster.enemy_from_json(self.world, self.filename)
+        self.monster = Monster.create_initial(self.world, v(400, 80))
 
         Shelf.load()
         self.hud = Shelf(self.world, self.monster)
@@ -130,7 +130,7 @@ class Game(object):
         take_screenshot(self.window, filename=fname + '.jpg')
         pprint.pprint(self.monster.to_json())
         with open(fname + '.json', 'w') as f:
-            f.write(json.dumps(self.monster.to_json()))
+            f.write(json.dumps(self.monster.to_json(), indent=2))
 
     def on_key_press(self, symbol, modifiers):
         if symbol == key.F12: 
