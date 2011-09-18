@@ -189,6 +189,8 @@ class UpgradeablePart(BodyPart):
         return self.level < 3 and self.name == 'player'
 
     def upgrade(self): 
+        if not self.can_upgrade():
+            return
         self.monster.spend_mutagen(self.upgrade_cost())
         self.level += 1
         self.set_part('level%d' % self.level)

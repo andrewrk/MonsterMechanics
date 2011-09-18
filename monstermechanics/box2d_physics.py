@@ -224,18 +224,28 @@ class StiffJoint(object):
     def __init__(self, world, jointdef, body1, body2):
         self.jointdef = jointdef
         self.world = world
-        self.joint = world.world.CreateJoint(jointdef).getAsType() 
+        self.joint = self.make_joint(jointdef)
         self.body1 = body1
         self.body2 = body2
         self.b1_anchor = v(*self.jointdef.localAnchor1) / body1.scale
         self.b2_anchor = v(*self.jointdef.localAnchor2) / body2.scale
+    
+    def make_joint(self, jointdef):
+        basejoint = self.world.world.CreateJoint(jointdef)
+        try:
+            return basejoint.getAsType()
+        except AttributeError:
+            try:
+                return basejoint.GetAsType()
+            except AttributeError:
+                return basejoint
 
     def rescale(self):
         """Reposition the joint anchors to match the bodys' current scale"""
         self.world.world.DestroyJoint(self.joint)
         self.jointdef.localAnchor1 = self.b1_anchor * self.body1.scale
         self.jointdef.localAnchor2 = self.b2_anchor * self.body2.scale
-        self.joint = self.world.world.CreateJoint(self.jointdef).getAsType() 
+        self.joint = self.make_joint(self.jointdef)
 
     def update(self, dt):
         angleError = self.joint.GetJointAngle()
